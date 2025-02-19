@@ -63,6 +63,9 @@ GameState.txt
 stats.txt
 videoconfig_linux.cfg
 voice_ban.dt
+tf2_playerstats.dmx
+viewed.res
+user.scr
 
 # shader files
 *.tmp
