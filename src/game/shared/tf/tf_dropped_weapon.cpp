@@ -61,6 +61,7 @@ CTFDroppedWeapon::CTFDroppedWeapon()
 	, m_flNextSecondaryAttack( 0.f )
 	, m_bBroken( false )
 	, m_flMeter( 0.f )
+	, m_vecStartOrigin( 0, 0, 0 )
 #endif
 {
 #ifdef CLIENT_DLL
@@ -513,9 +514,12 @@ CTFDroppedWeapon *CTFDroppedWeapon::Create( CTFPlayer *pLastOwner, const Vector 
 //-----------------------------------------------------------------------------
 void CTFDroppedWeapon::InitDroppedWeapon( CTFPlayer *pPlayer, CTFWeaponBase *pWeapon,  bool bSwap, bool bIsSuicide /*= false*/ )
 {
-	m_hPlayer = pPlayer;
-
 	SetAbsAngles(QAngle(0, 0, 0));
+	m_vecStartOrigin = GetAbsOrigin();
+
+	SetContextThink( &CTFDroppedWeapon::BobThink, gpGlobals->curtime, "BobThink" );
+
+	m_hPlayer = pPlayer;
 
 	m_nSkin = pWeapon->GetSkin();
 	
@@ -573,6 +577,7 @@ void CTFDroppedWeapon::InitPickedUpWeapon( CTFPlayer *pPlayer, CTFWeaponBase *pW
 {
 	// clear the context think
 	SetContextThink( NULL, 0, "ChargeLevelDegradeThink" );
+	SetContextThink( NULL, 0, "BobThink" );
 
 	// preserve the ammo
 	int nCurrentMetal = pPlayer->GetAmmoCount( TF_AMMO_METAL );
@@ -637,6 +642,18 @@ void CTFDroppedWeapon::ChargeLevelDegradeThink()
 	}
 
 	SetContextThink( &CTFDroppedWeapon::ChargeLevelDegradeThink, gpGlobals->curtime + 0.1f, "ChargeLevelDegradeThink" );
+}
+
+void CTFDroppedWeapon::BobThink()
+{
+	QAngle newAngles( 0, gpGlobals->curtime * 40.0f, 0 );
+	SetAbsAngles(newAngles);
+
+	Vector newOrigin = m_vecStartOrigin;
+	newOrigin.z += abs(sin(gpGlobals->curtime)) * 16.0f;
+	SetAbsOrigin(newOrigin);
+
+	SetContextThink( &CTFDroppedWeapon::BobThink, gpGlobals->curtime, "BobThink" );
 }
 
 //-----------------------------------------------------------------------------

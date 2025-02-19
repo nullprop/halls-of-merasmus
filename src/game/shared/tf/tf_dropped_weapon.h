@@ -53,6 +53,7 @@ public:
 	void InitPickedUpWeapon( CTFPlayer *pPlayer, CTFWeaponBase *pWeapon );
 
 	void ChargeLevelDegradeThink();
+	void BobThink();
 #endif // GAME_DLL
 
 	CEconItemView *GetItem() { return &m_Item; }
@@ -82,6 +83,7 @@ private:
 	float m_flNextSecondaryAttack;
 	bool m_bBroken;
 	float m_flMeter;
+	Vector m_vecStartOrigin;
 #endif // GAME_DLL
 
 #ifdef CLIENT_DLL
