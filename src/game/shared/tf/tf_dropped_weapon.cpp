@@ -24,7 +24,7 @@
 
 
 #ifdef GAME_DLL
-ConVar tf_dropped_weapon_lifetime( "tf_dropped_weapon_lifetime", "30", FCVAR_CHEAT ); 
+ConVar tf_dropped_weapon_lifetime( "tf_dropped_weapon_lifetime", "60", FCVAR_CHEAT );
 
 EXTERN_SEND_TABLE( DT_ScriptCreatedItem );
 
@@ -97,7 +97,7 @@ void CTFDroppedWeapon::Spawn()
 #ifdef GAME_DLL
 	SetModel( STRING( GetModelName() ) );
 
-	SetMoveType( MOVETYPE_FLYGRAVITY );
+	SetMoveType( MOVETYPE_NONE );
 	SetSolid( SOLID_BBOX );
 	SetBlocksLOS( false );
 	AddEFlags( EFL_NO_ROTORWASH_PUSH );
@@ -110,18 +110,14 @@ void CTFDroppedWeapon::Spawn()
 	// Create the object in the physics system
 	int nSolidFlags = GetSolidFlags() | FSOLID_NOT_STANDABLE;
 
-	if ( VPhysicsInitNormal( SOLID_VPHYSICS, nSolidFlags, false ) == NULL )
-	{
-		SetSolid( SOLID_BBOX );
-		AddSolidFlags( nSolidFlags );
+	AddSolidFlags( nSolidFlags );
 
-		// If it's not physical, drop it to the floor
-		if ( UTIL_DropToFloor( this, MASK_SOLID ) == 0 )
-		{
-			Warning( "Item %s fell out of level at %f,%f,%f\n", GetClassname(), GetAbsOrigin().x, GetAbsOrigin().y, GetAbsOrigin().z);
-			UTIL_Remove( this );
-			return;
-		}
+	// Drop it to the floor
+	if ( UTIL_DropToFloor( this, MASK_SOLID ) == 0 )
+	{
+		Warning( "Item %s fell out of level at %f,%f,%f\n", GetClassname(), GetAbsOrigin().x, GetAbsOrigin().y, GetAbsOrigin().z);
+		UTIL_Remove( this );
+		return;
 	}
 
 #endif // GAME_DLL
@@ -519,36 +515,7 @@ void CTFDroppedWeapon::InitDroppedWeapon( CTFPlayer *pPlayer, CTFWeaponBase *pWe
 {
 	m_hPlayer = pPlayer;
 
-	// Calculate the initial impulse on the weapon.
-	Vector vecImpulse( 0.0f, 0.0f, 0.0f );
-	float flImpulseScale = 0.f;
-	if ( bSwap && pPlayer )
-	{
-		Vector vecForward, vecUp;
-		AngleVectors( pPlayer->EyeAngles(), &vecForward, NULL, &vecUp );
-		vecImpulse += Vector(0,0,1.5); //vecUp * 0.5f;
-		vecImpulse += vecForward * 1.0f;
-		flImpulseScale = 250.f;
-	}
-	else
-	{
-		Vector vecRight, vecUp;
-		AngleVectors( EyeAngles(), NULL, &vecRight, &vecUp );
-		vecImpulse += vecUp * random->RandomFloat( -0.25, 0.25 );
-		vecImpulse += vecRight * random->RandomFloat( -0.25, 0.25 );
-		flImpulseScale = random->RandomFloat( 100.f, 150.f );
-	}
-	VectorNormalize( vecImpulse );
-	vecImpulse *= flImpulseScale;
-	vecImpulse += GetAbsVelocity();
-
-	if ( VPhysicsGetObject() )
-	{
-		// We can probably remove this when the mass on the weapons is correct!
-		VPhysicsGetObject()->SetMass( 25.0f );
-		AngularImpulse angImpulse( 0, random->RandomFloat( 0, 100 ), 0 );
-		VPhysicsGetObject()->SetVelocityInstantaneous( &vecImpulse, &angImpulse );
-	}
+	SetAbsAngles(QAngle(0, 0, 0));
 
 	m_nSkin = pWeapon->GetSkin();
 	
