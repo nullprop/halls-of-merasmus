@@ -4,7 +4,7 @@
         {
             "label": "Build All Projects",
             "type": "shell",
-            "command": "./buildallprojects",
+            "command": "./src/buildallprojects",
             "group": {
                 "kind": "build",
                 "isDefault": true
