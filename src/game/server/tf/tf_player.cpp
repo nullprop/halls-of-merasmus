@@ -22704,35 +22704,17 @@ bool CTFPlayer::PickupWeaponFromOther( CTFDroppedWeapon *pDroppedWeapon )
 			// make sure we removed our current weapon				
 			if ( pWeapon )
 			{
-				// drop current weapon
-				Vector vecPackOrigin;
-				QAngle vecPackAngles;
-				CalculateAmmoPackPositionAndAngles( pWeapon, vecPackOrigin, vecPackAngles );
-
-				bool bShouldThrowHeldWeapon = true;
-
-				// When in the spawn room, you won't throw down your held weapon if you own that weapon.
-				// This is to prevent folks from standing near a supply closet and spawning their items
-				// over and over and over.
-				if ( PointInRespawnRoom( this, WorldSpaceCenter() ) )
+				// drop current weapon at same spot as the one we just picked up
+				CTFDroppedWeapon *pNewDroppedWeapon = CTFDroppedWeapon::Create(
+					this,
+					pDroppedWeapon->GetAbsOrigin(),
+					pDroppedWeapon->GetAbsAngles(),
+					pWeapon->GetWorldModel(),
+					pWeapon->GetAttributeContainer()->GetItem()
+				);
+				if ( pNewDroppedWeapon )
 				{
-					CSteamID playerSteamID;
-					GetSteamID( &playerSteamID );
-					uint32 nItemAccountID = pWeapon->GetAttributeContainer()->GetItem()->GetAccountID();
-					// Stock weapons have accountID 0
-					if ( playerSteamID.GetAccountID() == nItemAccountID || nItemAccountID == 0 )
-					{
-						bShouldThrowHeldWeapon = false;
-					}
-				}
-
-				if ( bShouldThrowHeldWeapon )
-				{
-					CTFDroppedWeapon *pNewDroppedWeapon = CTFDroppedWeapon::Create( this, vecPackOrigin, vecPackAngles, pWeapon->GetWorldModel(), pWeapon->GetAttributeContainer()->GetItem() );
-					if ( pNewDroppedWeapon )
-					{
-						pNewDroppedWeapon->InitDroppedWeapon( this, pWeapon, true );
-					}
+					pNewDroppedWeapon->InitDroppedWeapon( this, pWeapon, true );
 				}
 
 				Weapon_Detach( pWeapon );
