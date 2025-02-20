@@ -31,6 +31,7 @@ obj*/
 .ninja_deps
 .ninja_log
 compile_commands.json
+.ccls-cache/
 
 # Specific Source build products
 client.pdb

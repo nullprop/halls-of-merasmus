@@ -926,6 +926,22 @@ $Project "Server (TF)"
 				$File	"tf\player_vs_environment\tf_tank_boss_body.cpp"
 				$File	"tf\player_vs_environment\tf_tank_boss_body.h"
 				$File	"tf\player_vs_environment\tf_point_weapon_mimic.cpp"
+				$File	"tf\player_vs_environment\tf_melee_mob.cpp"
+				$File	"tf\player_vs_environment\tf_melee_mob.h"
+				$File	"tf\player_vs_environment\tf_melee_mob_body.cpp"
+				$File	"tf\player_vs_environment\tf_melee_mob_body.h"
+				$File	"tf\player_vs_environment\tf_mob_spawner.cpp"
+				$File	"tf\player_vs_environment\tf_mob_spawner.h"
+
+				$Folder "Behavior"
+				{
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_attack.cpp"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_attack.h"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_special_attack.cpp"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_special_attack.h"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_spawn.cpp"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_spawn.h"
+				}
 
 				$Folder "Boss Alpha"
 				{
