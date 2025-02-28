@@ -1649,7 +1649,7 @@ void CWeaponMedigun::RemoveHealingTarget( bool bStopHealingSelf )
 		int i = 0;
 		for ( i = 0; i < m_DetachedTargets.Count(); i++ )
 		{
-			if ( m_DetachedTargets[i].hTarget == m_hHealingTarget )
+			if ( m_DetachedTargets[i].hTarget.Get() == m_hHealingTarget )
 			{
 				m_DetachedTargets[i].flTime = gpGlobals->curtime;
 				break;
@@ -2392,7 +2392,7 @@ void CWeaponMedigun::UpdateEffects( void )
 		if ( m_hHealingTargetEffect.pTarget == m_hHealingTarget )
 			return;
 
-		bool bReviveMarker = m_hReviveMarker && m_hReviveMarker == m_hHealingTarget;	// Hack to avoid another dynamic_cast here
+		bool bReviveMarker = m_hReviveMarker && m_hReviveMarker.Get() == m_hHealingTarget;
 		bool bHealTargetMarker = hud_medichealtargetmarker.GetBool() && !bReviveMarker;
 
 		const char *pszEffectName;

@@ -2129,8 +2129,8 @@ static void Script_QueueSpeak( HSCRIPT hEntity, const char *pszConcept, float fl
 		criteria.Merge( pszCriteria );
 	}
 
-	AIConcept_t concept( pszConcept );
-	QueueSpeak( concept, pBaseEntity, flDelay, criteria );
+	AIConcept_t conc( pszConcept );
+	QueueSpeak( conc, pBaseEntity, flDelay, criteria );
 }
 #endif
 
