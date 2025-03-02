@@ -1888,6 +1888,21 @@ enum EAttackBonusEffects_t
 //-----------------------------------------------------------------------------
 // PVE MODE
 //-----------------------------------------------------------------------------
+enum MobDrops_t
+{
+	TF_MOB_DROP_CASH_SMALL,
+	TF_MOB_DROP_CASH_MEDIUM,
+	TF_MOB_DROP_CASH_LARGE,
+
+	TF_MOB_DROP_AMMO_SMALL,
+	TF_MOB_DROP_AMMO_MEDIUM,
+	TF_MOB_DROP_AMMO_LARGE,
+
+	TF_MOB_DROP_HEALTH_SMALL,
+	TF_MOB_DROP_HEALTH_MEDIUM,
+	TF_MOB_DROP_HEALTH_LARGE,
+};
+
 // In-game currency
 enum CurrencyRewards_t
 {

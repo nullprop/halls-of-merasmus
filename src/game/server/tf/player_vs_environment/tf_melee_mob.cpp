@@ -4,12 +4,15 @@
 //
 //=============================================================================
 #include "cbase.h"
+#include "tf_mob_drop.h"
 #include "tf_player.h"
 #include "tf_gamerules.h"
 #include "tf_team.h"
 #include "nav_mesh/tf_nav_area.h"
 #include "NextBot/Path/NextBotChasePath.h"
 #include "particle_parse.h"
+#include "tf_ammo_pack.h"
+#include "entity_healthkit.h"
 
 #include "tf_melee_mob.h"
 #include "mob_behavior/melee_mob_spawn.h"
@@ -229,6 +232,71 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 {
 	EmitSound( "Halloween.skeleton_break" );
 
+	const Vector spawnOrigin = WorldSpaceCenter();
+	const QAngle spawnAngles = QAngle();
+
+	// Spawn some cash
+	CTFMobDropCashSmall *pCash = assert_cast<CTFMobDropCashSmall*>(CBaseEntity::CreateNoSpawn(
+		"item_mobdrop_cash_small",
+		spawnOrigin,
+		spawnAngles,
+		this
+	));
+
+	if ( pCash )
+	{
+		pCash->SetAmount( 50 );
+
+		Vector vecImpulse = RandomVector( -1, 1 );
+		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
+		VectorNormalize( vecImpulse );
+		Vector vecVelocity = vecImpulse * 250.0 * RandomFloat( 1.0f, 4.0f );
+
+		DispatchSpawn( pCash );
+		pCash->DropSingleInstance( vecVelocity, this, 0, 0 );
+	}
+
+	// Spawn some ammo
+	CTFMobDropAmmoSmall *pAmmo = assert_cast<CTFMobDropAmmoSmall*>(CBaseEntity::CreateNoSpawn(
+		"item_mobdrop_ammo_small",
+		spawnOrigin,
+		spawnAngles,
+		this
+	));
+
+	if ( pAmmo )
+	{
+		pAmmo->SetAmount( 4 );
+
+		Vector vecImpulse = RandomVector( -1, 1 );
+		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
+		VectorNormalize( vecImpulse );
+		Vector vecVelocity = vecImpulse * 250.0 * RandomFloat( 1.0f, 4.0f );
+
+		DispatchSpawn( pAmmo );
+		pAmmo->DropSingleInstance( vecVelocity, this, 0, 0 );
+	}
+
+	// Spawn some health
+	CTFMobDropHealthSmall *pHealth = assert_cast<CTFMobDropHealthSmall*>(CBaseEntity::CreateNoSpawn(
+		"item_mobdrop_health_small",
+		spawnOrigin,
+		spawnAngles,
+		this
+	));
+
+	if ( pHealth )
+	{
+		pHealth->SetAmount( 20 );
+
+		Vector vecImpulse = RandomVector( -1, 1 );
+		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
+		VectorNormalize( vecImpulse );
+		Vector vecVelocity = vecImpulse * 250.0 * RandomFloat( 1.0f, 4.0f );
+
+		DispatchSpawn( pHealth );
+		pHealth->DropSingleInstance( vecVelocity, this, 0, 0 );
+	}
 
 	if (info.GetAttacker() && info.GetAttacker()->IsPlayer())
 	{

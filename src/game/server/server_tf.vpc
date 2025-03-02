@@ -932,6 +932,8 @@ $Project "Server (TF)"
 				$File	"tf\player_vs_environment\tf_melee_mob_body.h"
 				$File	"tf\player_vs_environment\tf_mob_spawner.cpp"
 				$File	"tf\player_vs_environment\tf_mob_spawner.h"
+				$File	"tf\player_vs_environment\tf_mob_drop.cpp"
+				$File	"tf\player_vs_environment\tf_mob_drop.h"
 
 				$Folder "Behavior"
 				{

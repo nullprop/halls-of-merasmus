@@ -105,6 +105,10 @@ static ConVar tf_demoman_charge_frametime_scaling( "tf_demoman_charge_frametime_
 static const float YAW_CAP_SCALE_MIN = 0.2f;
 static const float YAW_CAP_SCALE_MAX = 2.f;
 
+ConVar tf_mob_drop_collection_radius( "tf_mob_drop_collection_radius", "400", FCVAR_CHEAT );
+ConVar tf_mob_drop_collection_force( "tf_mob_drop_collection_force", "300", FCVAR_CHEAT );
+ConVar tf_mob_drop_collection_ground_force( "tf_mob_drop_collection_ground_force", "250", FCVAR_CHEAT );
+
 ConVar tf_halloween_kart_boost_recharge( "tf_halloween_kart_boost_recharge", "5.0f", FCVAR_REPLICATED | FCVAR_CHEAT );
 ConVar tf_halloween_kart_boost_duration( "tf_halloween_kart_boost_duration", "1.5f", FCVAR_REPLICATED | FCVAR_CHEAT );
 
@@ -844,7 +848,6 @@ CTFPlayerShared::CTFPlayerShared()
 	m_bPulseRadiusHeal = false;
 
 	m_flRadiusCurrencyCollectionTime = 0;
-	m_flRadiusSpyScanTime = 0;
 
 	m_flCloakStartTime = -1.0f;
 
@@ -3038,20 +3041,7 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		m_flSpyTranqBuffDuration = 0;
 	}
 
-	if ( TFGameRules()->IsMannVsMachineMode() || TFGameRules()->IsPlayingRobotDestructionMode() )
-	{
-		RadiusCurrencyCollectionCheck();
-	}
-
-	if ( TFGameRules()->IsMannVsMachineMode() && m_pOuter->IsPlayerClass( TF_CLASS_SPY) )
-	{
-		// In MvM, Spies reveal other spies in a radius around them
-		RadiusSpyScan();
-	}
-	if ( GetCarryingRuneType() == RUNE_PLAGUE )
-	{
-		RadiusHealthkitCollectionCheck();
-	}
+	RadiusMobDropCollectionCheck();
 
 #endif // GAME_DLL
 }
@@ -8989,197 +8979,96 @@ void CTFPlayerShared::SetChargeEffect( medigun_charge_types iCharge, bool bState
 //-----------------------------------------------------------------------------
 // Purpose: Collect currency packs in a radius around the scout
 //-----------------------------------------------------------------------------
-void CTFPlayerShared::RadiusCurrencyCollectionCheck( void )
+void CTFPlayerShared::RadiusMobDropCollectionCheck( void )
 {
-	if ( m_pOuter->GetTeamNumber() != TF_TEAM_PVE_DEFENDERS && TFGameRules()->IsMannVsMachineMode() )
-		return;
-
 	if ( !m_pOuter->IsAlive() )
 		return;
 
 	if ( m_flRadiusCurrencyCollectionTime > gpGlobals->curtime )
 		return;
 	
-	bool bScout = m_pOuter->GetPlayerClass()->GetClassIndex() == TF_CLASS_SCOUT;
-	const int nRadiusSqr = bScout ? 288 * 288 : 72 * 72;
+	const int nRadius = tf_mob_drop_collection_radius.GetInt();
+	const int nRadiusSqr = nRadius * nRadius;
 	Vector vecPos = m_pOuter->GetAbsOrigin();
 
 	// NDebugOverlay::Sphere( vecPos, nRadius, 0, 255, 0, 40, 5 );
 
-	for ( int i = 0; i < ICurrencyPackAutoList::AutoList().Count(); ++i )
+	for ( int i = 0; i < ITFMobDropAutoList::AutoList().Count(); ++i )
 	{
-		CCurrencyPack *pCurrencyPack = static_cast< CCurrencyPack* >( ICurrencyPackAutoList::AutoList()[i] );
-		if ( !pCurrencyPack )
+		CTFMobDrop *pMobDrop = static_cast< CTFMobDrop* >( ITFMobDropAutoList::AutoList()[i] );
+		if ( !pMobDrop )
 			continue;
 
-		if ( !pCurrencyPack->AffectedByRadiusCollection() )
+		if ( !pMobDrop->AffectedByRadiusCollection() )
 			continue;
 
-		if ( ( vecPos - pCurrencyPack->GetAbsOrigin() ).LengthSqr() > nRadiusSqr )
+		if ( ( vecPos - pMobDrop->GetAbsOrigin() ).LengthSqr() > nRadiusSqr )
 			continue;
 
-		if ( pCurrencyPack->IsClaimed() )
+		if ( pMobDrop->IsClaimed() )
 			continue;
 
-		if ( m_pOuter->FVisible( pCurrencyPack, MASK_OPAQUE ) == false )
+		if ( m_pOuter->FVisible( pMobDrop, MASK_OPAQUE ) == false )
 			continue;
 
-		if ( !pCurrencyPack->ValidTouch( m_pOuter ) )
+		if ( !pMobDrop->ValidTouch( m_pOuter ) )
 			continue;
 
-		// Currencypack's seek classes with a large collection radius
-		if ( bScout )
+		bool bFound = false;
+		FOR_EACH_VEC( m_MobDrops, i )
 		{
-			bool bFound = false;
-			FOR_EACH_VEC( m_CurrencyPacks, i )
-			{
-				pulledcurrencypacks_t packinfo = m_CurrencyPacks[i];
-				if ( packinfo.hPack == pCurrencyPack )
-					bFound = true;
-			}
-
-			if ( !bFound )
-			{
-				// Mark as claimed to prevent other players from grabbing
-				pCurrencyPack->SetClaimed();
-				pulledcurrencypacks_t packinfo;
-				packinfo.hPack = pCurrencyPack;
-				packinfo.flTime = gpGlobals->curtime + 1.f;
-				m_CurrencyPacks.AddToTail( packinfo );
-			}
+			PulledMobDrops_t dropInfo = m_MobDrops[i];
+			if ( dropInfo.hDrop == pMobDrop )
+				bFound = true;
 		}
-		else
+		if ( !bFound )
 		{
-			pCurrencyPack->Touch( m_pOuter );
+			// Mark as claimed to prevent other players from grabbing
+			pMobDrop->SetClaimed();
+			PulledMobDrops_t dropInfo;
+			dropInfo.hDrop = pMobDrop;
+			dropInfo.flTime = gpGlobals->curtime + 3.0f;
+			m_MobDrops.AddToTail( dropInfo );
 		}
 	}
 
-	FOR_EACH_VEC_BACK( m_CurrencyPacks, i )
+	FOR_EACH_VEC_BACK( m_MobDrops, i )
 	{
-		if ( m_CurrencyPacks[i].hPack )
+		if ( m_MobDrops[i].hDrop )
 		{
 			// If the timeout hits, force a touch
-			if ( m_CurrencyPacks[i].flTime <= gpGlobals->curtime )
+			if ( m_MobDrops[i].flTime <= gpGlobals->curtime )
 			{
-				m_CurrencyPacks[i].hPack->Touch( m_pOuter );
+				m_MobDrops[i].hDrop->Touch( m_pOuter );
 			}
 			else
 			{
 				// Seek the player
-				const float flForce = 550.0f;
+				Vector vToPlayer = m_pOuter->GetAbsOrigin()
+					- m_MobDrops[i].hDrop->GetAbsOrigin()
+					+ Vector( 0, 0, 32 );
 
-				Vector vToPlayer = m_pOuter->GetAbsOrigin() - m_CurrencyPacks[i].hPack->GetAbsOrigin();
-
-				vToPlayer.z = 0.0f;
 				vToPlayer.NormalizeInPlace();
-				vToPlayer.z = 0.25f;
 
-				Vector vPush = flForce * vToPlayer;
+				Vector vPush = tf_mob_drop_collection_force.GetFloat() * vToPlayer;
 
-				m_CurrencyPacks[i].hPack->RemoveFlag( FL_ONGROUND );
-				m_CurrencyPacks[i].hPack->ApplyAbsVelocityImpulse( vPush );
+				if (m_MobDrops[i].hDrop->GetFlags() & FL_ONGROUND )
+				{
+					m_MobDrops[i].hDrop->RemoveFlag( FL_ONGROUND );
+					m_MobDrops[i].hDrop->ApplyAbsVelocityImpulse( Vector( 0, 0, tf_mob_drop_collection_ground_force.GetFloat() ) );
+				}
+
+				m_MobDrops[i].hDrop->ApplyAbsVelocityImpulse( vPush );
 			}
 		}
 		else
 		{
 			// Automatic clean-up
-			m_CurrencyPacks.Remove( i );
+			m_MobDrops.Remove( i );
 		}
 	}
 
-	m_flRadiusCurrencyCollectionTime = bScout ? gpGlobals->curtime + 0.15f : gpGlobals->curtime + 0.25f;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Collect objects in a radius around the player
-//-----------------------------------------------------------------------------
-void CTFPlayerShared::RadiusHealthkitCollectionCheck( void )
-{
-	if ( GetCarryingRuneType() != RUNE_PLAGUE )
-		return;
-
-	if ( !m_pOuter->IsAlive() )
-		return;
-
-	if ( m_flRadiusCurrencyCollectionTime > gpGlobals->curtime )
-		return;
-
-	const int nRadiusSqr = 600 * 600;
-	const Vector& vecPos = m_pOuter->WorldSpaceCenter();
-
-//	NDebugOverlay::Sphere( vecPos, 600, 0, 255, 0, false, 2.f );
-
-	for ( int i = 0; i < IHealthKitAutoList::AutoList().Count(); ++i )
-	{
-		CHealthKit *pHealthKit = static_cast<CHealthKit*>( IHealthKitAutoList::AutoList()[i] );
-		if ( !pHealthKit )
-			continue;
-
-		if ( ( vecPos - pHealthKit->GetAbsOrigin() ).LengthSqr() > nRadiusSqr )
-			continue;
-
-		if ( !pHealthKit->ValidTouch( m_pOuter ) )
-			continue;
-
-		if ( pHealthKit->IsEffectActive( EF_NODRAW ) )
-			continue;
-
-		pHealthKit->ItemTouch( m_pOuter );
-	}
-
-	m_flRadiusCurrencyCollectionTime = gpGlobals->curtime + 0.15f;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Scan for and reveal spies in a radius around the player
-//-----------------------------------------------------------------------------
-void CTFPlayerShared::RadiusSpyScan( void )
-{
-	if ( m_pOuter->GetTeamNumber() != TF_TEAM_PVE_DEFENDERS )
-		return;
-
-	if ( !m_pOuter->IsAlive() )
-		return;
-
-	if ( m_flRadiusSpyScanTime <= gpGlobals->curtime )
-	{
-//		bool bRevealed = false;
-		const int iRange = 750;
-
-		CUtlVector<CTFPlayer *> vecPlayers;
-		CollectPlayers( &vecPlayers, TF_TEAM_PVE_INVADERS, true );
-		FOR_EACH_VEC( vecPlayers, i )
-		{
-
-			if ( !vecPlayers[i] )
-				continue;
-
-			if ( vecPlayers[i]->GetPlayerClass()->GetClassIndex() != TF_CLASS_SPY )
-				continue;
-			
-			if ( !vecPlayers[i]->m_Shared.InCond( TF_COND_STEALTHED ) )
-				continue;
-
-			if ( m_pOuter->FVisible( vecPlayers[i], MASK_OPAQUE ) == false )
-				continue;
-
-			Vector vDist = vecPlayers[i]->GetAbsOrigin() - m_pOuter->GetAbsOrigin();
-			if ( vDist.LengthSqr() <= iRange * iRange )
-			{
-				vecPlayers[i]->m_Shared.OnSpyTouchedByEnemy();
-//				bRevealed = true;
-			}
-		}
-
-// 		if ( bRevealed )
-// 		{
-// 			bRevealed = false;
-// 			CSingleUserRecipientFilter filter( m_pOuter );
-// 			m_pOuter->EmitSound( filter, m_pOuter->entindex(), "Recon.Ping" );
-// 		}
-
-		m_flRadiusSpyScanTime = gpGlobals->curtime + 0.3f;
-	}
+	m_flRadiusCurrencyCollectionTime = gpGlobals->curtime + 0.1f;
 }
 
 //-----------------------------------------------------------------------------

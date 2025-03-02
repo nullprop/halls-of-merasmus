@@ -24,6 +24,7 @@ class C_TFPlayer;
 // Server specific.
 #else
 #include "entity_currencypack.h"
+#include "player_vs_environment/tf_mob_drop.h"
 #include "tf_weapon_builder.h"
 class CTFPlayer;
 #endif
@@ -924,9 +925,7 @@ private:
 	void  SetChargeEffect( medigun_charge_types iCharge, bool bState, bool bInstant, const struct MedigunEffects_t& effects, float flWearOffTime, CTFPlayer *pProvider = NULL );
 	void  SetCritBoosted( bool bState );
 
-	void RadiusCurrencyCollectionCheck( void );
-	void RadiusHealthkitCollectionCheck( void );
-	void RadiusSpyScan( void );
+	void RadiusMobDropCollectionCheck( void );
 
 	// Attr for Conditions
 	void ApplyAttributeToPlayer( const char* pszAttribName, float flValue );
@@ -1202,14 +1201,13 @@ private:
 	CHandle<CTFPlayer>	m_hPeeAttacker;
 
 	float m_flRadiusCurrencyCollectionTime;
-	float m_flRadiusSpyScanTime;
 
-	struct pulledcurrencypacks_t
+	struct PulledMobDrops_t
 	{
-		CHandle<CCurrencyPack> hPack;
+		CHandle<CTFMobDrop> hDrop;
 		float flTime;
 	};
-	CUtlVector <pulledcurrencypacks_t> m_CurrencyPacks;
+	CUtlVector <PulledMobDrops_t> m_MobDrops;
 
 #else
 	float	m_flGotTeleEffectAt;

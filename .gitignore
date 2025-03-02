@@ -67,6 +67,7 @@ voice_ban.dt
 tf2_playerstats.dmx
 viewed.res
 user.scr
+steam_appid.txt
 
 # shader files
 *.tmp
