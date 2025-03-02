@@ -1,0 +1,3 @@
+[submodule "src/vphysics_jolt"]
+	path = src/vphysics_jolt
+	url = git@github.com:nullprop/VPhysics-Jolt.git

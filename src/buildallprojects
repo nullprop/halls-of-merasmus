@@ -24,7 +24,7 @@ fi
 solution_out="_vpc_/ninja/sdk_everything_$VPC_NINJA_BUILD_MODE"
 
 if [[ ! -e "$solution_out.ninja" ]]; then
-    devtools/bin/vpc /hl2mp /tf /linux64 /ninja /define:SOURCESDK +everything /mksln "$solution_out"
+    devtools/bin/vpc /hl2mp /tf /linux64 /ninja +everything +jolt /mksln "$solution_out"
 
     # Generate compile commands.
     ninja -f "$solution_out.ninja" -t compdb > compile_commands.json
@@ -34,5 +34,10 @@ if [[ ! -e "$solution_out.ninja" ]]; then
 fi
 
 ninja -f "$solution_out.ninja" -j$(nproc)
+
+# Move vphysics-jolt binaries to the correct place.
+mv ../bin/linux64/* ../game/bin/linux64/
+rmdir ../bin/linux64/
+rmdir ../bin/
 
 popd

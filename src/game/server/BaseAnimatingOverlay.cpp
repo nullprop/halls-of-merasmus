@@ -205,7 +205,8 @@ void CAnimationLayer::MarkActive( void )
 
 void CBaseAnimatingOverlay::VerifyOrder( void )
 {
-#ifdef _DEBUG
+//#ifdef _DEBUG
+#if 0 // FIXME: multiple overlays can have same order
 	int i, j;
 	// test sorting of the layers
 	int layer[MAX_OVERLAYS];

@@ -619,8 +619,6 @@ int main( int argc, char *argv[] )
 
 	char* pRootDir = GetBaseDir( moduleName );
 
-	const char *pBinaryGameDir = pRootDir;
-
 	char szGameInstallDir[4096];
 	if ( !GetGameInstallDir( pRootDir, szGameInstallDir, 4096 ) )
 	{
@@ -659,6 +657,14 @@ int main( int argc, char *argv[] )
 	}
 
 	new_argv.push_back(NULL);
+
+	// Add bin to path for vphysics-jolt
+	char* pPath = getenv("LD_LIBRARY_PATH");
+	char szBuffer[4096];
+	snprintf( szBuffer, sizeof( szBuffer ), "LD_LIBRARY_PATH=%s/bin/linux64:%s", pRootDir, pPath );
+	szBuffer[sizeof( szBuffer ) - 1] = '\0';
+	putenv( szBuffer );
+	printf("putenv: %s\n", szBuffer);
 
 	execvp( szExecutable, new_argv.data() );
 
