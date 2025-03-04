@@ -19,7 +19,8 @@ private:
 
 	void DoSpecialAttack( CTFMeleeMob *me );
 
-	CountdownTimer m_stompTimer;
+	CountdownTimer m_attackTimer;
+	CHandle< CBaseCombatCharacter > m_attackTarget;
 };
 
 #endif // MELEE_MOB_SPECIAL_ATTACK_H

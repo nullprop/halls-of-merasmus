@@ -20,6 +20,8 @@ public:
 
 	virtual const char *GetName( void ) const	{ return "Attack"; }		// return name of this action
 
+	CHandle<CBaseCombatCharacter> GetTarget( void ) const { return m_attackTarget; }
+
 private:
 	PathFollower m_path;
 

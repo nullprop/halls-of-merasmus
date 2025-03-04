@@ -105,7 +105,7 @@ static ConVar tf_demoman_charge_frametime_scaling( "tf_demoman_charge_frametime_
 static const float YAW_CAP_SCALE_MIN = 0.2f;
 static const float YAW_CAP_SCALE_MAX = 2.f;
 
-ConVar tf_mob_drop_collection_radius( "tf_mob_drop_collection_radius", "400", FCVAR_CHEAT );
+ConVar tf_mob_drop_collection_radius( "tf_mob_drop_collection_radius", "300", FCVAR_CHEAT );
 ConVar tf_mob_drop_collection_force( "tf_mob_drop_collection_force", "300", FCVAR_CHEAT );
 ConVar tf_mob_drop_collection_ground_force( "tf_mob_drop_collection_ground_force", "250", FCVAR_CHEAT );
 

@@ -3,8 +3,8 @@
 //
 //
 //=============================================================================
-#ifndef ZOMBIE_BODY_H
-#define ZOMBIE_BODY_H
+#ifndef TF_MELEE_MOB_BODY_H
+#define TF_MELEE_MOB_BODY_H
 
 #include "animation.h"
 #include "NextBotBodyInterface.h"
@@ -23,6 +23,7 @@ public:
 	virtual ~CTFMeleeMobBody() { }
 
 	virtual void Update( void );
+	virtual void Upkeep( void );
 
 	virtual bool StartActivity( Activity act, unsigned int flags = 0 );
 	virtual Activity GetActivity( void ) const;							// return currently animating activity
@@ -48,4 +49,4 @@ inline bool CTFMeleeMobBody::IsActivity( Activity act ) const
 }
 
 
-#endif // ZOMBIE_BODY_H
+#endif // TF_MELEE_MOB_BODY_H

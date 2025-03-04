@@ -96,6 +96,8 @@ public:
 
 	float GetAttackRange() const { return m_flAttackRange; }
 	float GetAttackDamage() const { return m_flAttackDamage; }
+	float GetSpecialAttackRange() const { return m_flSpecialAttackRange; }
+	float GetSpecialAttackDamage() const { return m_flSpecialAttackDamage; }
 
 	void FireDeathOutput( CBaseEntity *pCulprit );
 private:
@@ -114,12 +116,11 @@ private:
 		float m_flDamageTime;
 	};
 
-	CUtlVector< RecentDamager_t > m_vecRecentDamagers;
-
 	float m_flAttackRange;
 	float m_flAttackDamage;
+	float m_flSpecialAttackRange;
+	float m_flSpecialAttackDamage;
 
-	bool m_bSpy;
 	bool m_bForceSuicide;
 	CountdownTimer m_lifeTimer;
 

@@ -11,26 +11,41 @@
 
 #include "../tf_melee_mob.h"
 #include "melee_mob_special_attack.h"
+#include "melee_mob_attack.h"
+#include "player_vs_environment/tf_mob_projectile_fireball.h"
 
 ActionResult< CTFMeleeMob >	CTFMeleeMobSpecialAttack::OnStart( CTFMeleeMob *me, Action< CTFMeleeMob > *priorAction )
 {
-	me->GetBodyInterface()->StartActivity( ACT_SPECIAL_ATTACK1 );
+	// TODO
+	//me->GetBodyInterface()->StartActivity( ACT_SPECIAL_ATTACK1 );
 
-	m_stompTimer.Start( 1 );
+	m_attackTimer.Start( 1 );
+
+	CTFMeleeMobAttack *priorAttack = dynamic_cast<CTFMeleeMobAttack*>(priorAction);
+	if ( priorAttack )
+	{
+		m_attackTarget = priorAttack->GetTarget();
+	}
 
 	return Continue();
 }
 
-
 ActionResult< CTFMeleeMob >	CTFMeleeMobSpecialAttack::Update( CTFMeleeMob *me, float interval )
 {
-	if ( m_stompTimer.HasStarted() && m_stompTimer.IsElapsed() )
+	if (m_attackTarget)
 	{
-		DoSpecialAttack( me );
-		m_stompTimer.Invalidate();
+		me->GetLocomotionInterface()->FaceTowards( m_attackTarget->WorldSpaceCenter() );
 	}
 
-	if ( me->IsActivityFinished() )
+	if ( m_attackTimer.HasStarted() )
+	{
+		if ( m_attackTimer.IsElapsed() )
+		{
+			DoSpecialAttack( me );
+			m_attackTimer.Invalidate();
+		}
+	}
+	else if ( !me->IsValidSequence( me->GetSequence() ) || me->IsActivityFinished() )
 	{
 		return Done();
 	}
@@ -38,31 +53,41 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobSpecialAttack::Update( CTFMeleeMob *me, f
 	return Continue();
 }
 
-
 void CTFMeleeMobSpecialAttack::DoSpecialAttack( CTFMeleeMob *me )
 {
-	CPVSFilter filter( me->GetAbsOrigin() );
-	TE_TFParticleEffect( filter, 0.0, "bomibomicon_ring", me->GetAbsOrigin(), vec3_angle );
+	const Vector origin = me->EyePosition();
+	const QAngle angles = me->GetAbsAngles();
 
-	int nTargetTeam = TEAM_ANY;
-	if ( me->GetTeamNumber() != TF_TEAM_HALLOWEEN )
+	Vector vecForward;
+
+	if ( m_attackTarget )
 	{
-		nTargetTeam = me->GetTeamNumber() == TF_TEAM_RED ? TF_TEAM_BLUE : TF_TEAM_RED;
+		vecForward = m_attackTarget->GetAbsOrigin() - origin + Vector(0, 0, 64);
+		vecForward.NormalizeInPlace();
+	}
+	else
+	{
+		AngleVectors( angles, &vecForward );
+		vecForward.z = 0.2f;
+		vecForward.NormalizeInPlace();
 	}
 
-	CUtlVector< CTFPlayer* > pushedPlayers;
-	TFGameRules()->PushAllPlayersAway( me->GetAbsOrigin(), 200.f, 500.f, nTargetTeam, &pushedPlayers );
+	const Vector velocity = vecForward * 800.0f;
 
-	CBaseEntity *pAttacker = me->GetOwnerEntity() ? me->GetOwnerEntity() : me;
-	for ( int i=0; i<pushedPlayers.Count(); ++i )
+	CTFMobProjectile_Fireball *pFireball = static_cast< CTFMobProjectile_Fireball* >( CBaseEntity::CreateNoSpawn( "tf_mob_projectile_fireball", origin, angles, me ) );
+	if ( pFireball )
 	{
-		Vector toVictim = pushedPlayers[i]->WorldSpaceCenter() - me->WorldSpaceCenter();
-		toVictim.NormalizeInPlace();
+		pFireball->SetOwnerEntity( me );
+		pFireball->SetAbsVelocity( velocity );
+		pFireball->SetDamage( me->GetSpecialAttackDamage() );
+		pFireball->ChangeTeam( me->GetTeamNumber() );
 
-		// hit!
-		CTakeDamageInfo info( pAttacker, pAttacker, me->GetAttackDamage(), DMG_SLASH );
-		info.SetDamageCustom( TF_DMG_CUSTOM_SPELL_SKELETON );
-		CalculateMeleeDamageForce( &info, toVictim, me->WorldSpaceCenter(), 5.0f );
-		pushedPlayers[i]->TakeDamage( info );
+		IPhysicsObject *pPhysicsObject = pFireball->VPhysicsGetObject();
+		if ( pPhysicsObject )
+		{
+			pPhysicsObject->AddVelocity( &velocity, NULL );
+		}
+
+		DispatchSpawn( pFireball );
 	}
 }

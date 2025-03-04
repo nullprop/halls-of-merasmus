@@ -103,11 +103,16 @@ void CTFMeleeMobBody::Update( void )
 		float playbackRate = clamp( speed / me->m_flGroundSpeed, -4.f, 12.f );
 		me->SetPlaybackRate( playbackRate );
 	}
+}
+
+void CTFMeleeMobBody::Upkeep( void )
+{
+	CTFMeleeMob *me = (CTFMeleeMob *)GetBot()->GetEntity();
 
 	// move the animation ahead in time	
 	me->StudioFrameAdvance();
 	me->DispatchAnimEvents( me );
-}
+} 
 
 
 //---------------------------------------------------------------------------------------------

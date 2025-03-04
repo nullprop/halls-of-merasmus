@@ -21,7 +21,7 @@
 
 #define MOB_MODEL "models/bots/skeleton_sniper/skeleton_sniper.mdl"
 
-ConVar tf_max_active_mobs( "tf_max_active_mobs", "50", FCVAR_CHEAT );
+ConVar tf_max_active_mobs( "tf_max_active_mobs", "64", FCVAR_CHEAT );
 
 
 //-----------------------------------------------------------------------------------------------------
@@ -63,8 +63,9 @@ CTFMeleeMob::CTFMeleeMob()
 	m_flAttackRange = 50.f;
 	m_flAttackDamage = 30.f;
 
-	m_bSpy = false;
-	m_bForceSuicide = false;
+	m_flSpecialAttackRange = 500.0f;
+	m_flSpecialAttackDamage = 50.0f;
+
 	m_bDeathOutputFired = false;
 }
 
@@ -85,16 +86,6 @@ CTFMeleeMob::~CTFMeleeMob()
 
 void CTFMeleeMob::PrecacheMeleeMob()
 {
-	/*PrecacheModel( "models/player/items/scout/scout_zombie.mdl" );
-	PrecacheModel( "models/player/items/sniper/sniper_zombie.mdl" );
-	PrecacheModel( "models/player/items/soldier/soldier_zombie.mdl" );
-	PrecacheModel( "models/player/items/demo/demo_zombie.mdl" );
-	PrecacheModel( "models/player/items/medic/medic_zombie.mdl" );
-	PrecacheModel( "models/player/items/heavy/heavy_zombie.mdl" );
-	PrecacheModel( "models/player/items/pyro/pyro_zombie.mdl" );
-	PrecacheModel( "models/player/items/spy/spy_zombie.mdl" );
-	PrecacheModel( "models/player/items/engineer/engineer_zombie.mdl" );*/
-
 	int nSkeletonModel = PrecacheModel( MOB_MODEL );
 	PrecacheGibsForModel( nSkeletonModel );
 
@@ -122,8 +113,6 @@ void CTFMeleeMob::PrecacheMeleeMob()
 void CTFMeleeMob::Precache()
 {
 	BaseClass::Precache();
-
-	// These are player models which are already precached...
 
 	bool bAllowPrecache = CBaseEntity::IsPrecacheAllowed();
 	CBaseEntity::SetAllowPrecache( true );
@@ -204,23 +193,6 @@ int CTFMeleeMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		pszEffectName = GetTeamNumber() == TF_TEAM_RED ? "spell_pumpkin_mirv_goop_red" : "spell_pumpkin_mirv_goop_blue";
 	}
 
-	if (info.GetAttacker() && info.GetAttacker()->IsPlayer())
-	{
-		int idx = m_vecRecentDamagers.FindPredicate([&info]( const RecentDamager_t& recent)
-		{
-			return recent.m_hEnt == info.GetAttacker();
-		} );
-
-		if (idx == m_vecRecentDamagers.InvalidIndex())
-		{
-			idx = m_vecRecentDamagers.AddToTail();
-		}
-
-		RecentDamager_t& recentDamager = m_vecRecentDamagers[ idx ];
-		recentDamager.m_flDamageTime = gpGlobals->curtime;
-		recentDamager.m_hEnt = info.GetAttacker();
-	}
-
 	DispatchParticleEffect( pszEffectName, info.GetDamagePosition(), GetAbsAngles() );
 
 	return BaseClass::OnTakeDamage_Alive( info );
@@ -245,7 +217,7 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pCash )
 	{
-		pCash->SetAmount( 50 );
+		pCash->SetAmount( 10 );
 
 		Vector vecImpulse = RandomVector( -1, 1 );
 		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
@@ -316,23 +288,6 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 			}
 		}
 	}
-
-	for (const RecentDamager_t& recent : m_vecRecentDamagers)
-	{
-		if ( gpGlobals->curtime - recent.m_flDamageTime > TF_TIME_ASSIST_KILL)
-			continue;
-
-		CTFPlayer* pPlayerAttacker = ToTFPlayer(recent.m_hEnt);
-
-		IGameEvent *pEvent = gameeventmanager->CreateEvent("skeleton_killed_quest");
-		if (pEvent)
-		{
-			pEvent->SetInt("player", pPlayerAttacker->GetUserID());
-			gameeventmanager->FireEvent(pEvent, true);
-		}
-	}
-
-	m_vecRecentDamagers.Purge();
 
 	FireDeathOutput( info.GetInflictor() );
 	
@@ -586,7 +541,7 @@ QueryResultType CTFMeleeMobIntention::IsPositionAllowed( const INextBot *meBot, 
 //---------------------------------------------------------------------------------------------
 float CTFMeleeMobLocomotion::GetRunSpeed( void ) const
 {
-	return 300.f;
+	return 350.f;
 }
 
 
@@ -602,7 +557,7 @@ float CTFMeleeMobLocomotion::GetStepHeight( void ) const
 // return maximum height of a jump
 float CTFMeleeMobLocomotion::GetMaxJumpHeight( void ) const
 {
-	return 18.0f;
+	return 64.0f;
 }
 
 

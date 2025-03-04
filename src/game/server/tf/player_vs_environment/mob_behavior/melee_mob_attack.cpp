@@ -59,7 +59,7 @@ bool CTFMeleeMobAttack::IsPotentiallyChaseable( CTFMeleeMob *me, CBaseCombatChar
 	{
 		Vector victimAreaPos;
 		victimArea->GetClosestPointOnArea( victim->GetAbsOrigin(), &victimAreaPos );
-		if ( ( victim->GetAbsOrigin() - victimAreaPos ).AsVector2D().IsLengthGreaterThan( 50.0f ) )
+		if ( ( victim->GetAbsOrigin() - victimAreaPos ).AsVector2D().IsLengthGreaterThan( 150.0f ) )
 		{
 			// off the mesh and unreachable - pick a new victim
 			return false;
@@ -210,9 +210,25 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 		m_path.Update( me );
 	}
 
-	// claw at attack target if they are in range
-	const float zombieSwingRange = 150.0f;
-	if ( me->IsRangeLessThan( m_attackTarget, zombieSwingRange ) )
+	const float specialAttackRange = me->GetSpecialAttackRange();
+	const float meleeAttackRange = me->GetAttackRange();
+	const float meleeAnimationRange = meleeAttackRange * 3;
+
+	const bool isInSpecialAttackRange = me->IsRangeLessThan( m_attackTarget, specialAttackRange );
+	const bool isInMeleeAttackRange = me->IsRangeLessThan( m_attackTarget, meleeAttackRange );
+	const bool isInMeleeAnimationRange = me->IsRangeLessThan( m_attackTarget, meleeAnimationRange );
+
+	if ( isInSpecialAttackRange && !isInMeleeAnimationRange )
+	{
+		if ( m_specialAttackTimer.IsElapsed() )
+		{
+			m_specialAttackTimer.Start( RandomFloat( 5.f, 10.f ) );
+			return SuspendFor( new CTFMeleeMobSpecialAttack, "Do Special Attack!" );
+		}
+	}
+
+	// claw at attack target if they are close enough
+	if ( isInMeleeAnimationRange )
 	{
 		me->GetLocomotionInterface()->FaceTowards( m_attackTarget->WorldSpaceCenter() );
 
@@ -221,30 +237,23 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 		{
 			me->AddGesture( ACT_MP_ATTACK_STAND_MELEE );
 		}
+	}
 
-		const float zombieAttackRange = me->GetAttackRange();
-		if ( me->IsRangeLessThan( m_attackTarget, zombieAttackRange ) )
+	if ( isInMeleeAttackRange )
+	{
+		if ( m_attackTimer.IsElapsed() )
 		{
-			if ( me->GetMobType() == 1 && m_specialAttackTimer.IsElapsed() )
-			{
-				m_specialAttackTimer.Start( RandomFloat( 5.f, 10.f ) );
-				return SuspendFor( new CTFMeleeMobSpecialAttack, "Do Special Attack!" );
-			}
+			m_attackTimer.Start( RandomFloat( 0.8f, 1.2f ) );
 
-			if ( m_attackTimer.IsElapsed() )
-			{
-				m_attackTimer.Start( RandomFloat( 0.8f, 1.2f ) );
+			Vector toVictim = m_attackTarget->WorldSpaceCenter() - me->WorldSpaceCenter();
+			toVictim.NormalizeInPlace();
 
-				Vector toVictim = m_attackTarget->WorldSpaceCenter() - me->WorldSpaceCenter();
-				toVictim.NormalizeInPlace();
-
-				// hit!
-				CBaseEntity *pAttacker = me->GetOwnerEntity() ? me->GetOwnerEntity() : me;
-				CTakeDamageInfo info( pAttacker, pAttacker, me->GetAttackDamage(), DMG_SLASH );
-				info.SetDamageCustom( TF_DMG_CUSTOM_SPELL_SKELETON );
-				CalculateMeleeDamageForce( &info, toVictim, me->WorldSpaceCenter(), 5.0f );
-				m_attackTarget->TakeDamage( info );
-			}
+			// hit!
+			CBaseEntity *pAttacker = me->GetOwnerEntity() ? me->GetOwnerEntity() : me;
+			CTakeDamageInfo info( pAttacker, pAttacker, me->GetAttackDamage(), DMG_SLASH );
+			info.SetDamageCustom( TF_DMG_CUSTOM_SPELL_SKELETON );
+			CalculateMeleeDamageForce( &info, toVictim, me->WorldSpaceCenter(), 5.0f );
+			m_attackTarget->TakeDamage( info );
 		}
 	}
 

@@ -21,7 +21,7 @@
 
 extern ConVar ZombieMobMaxSize;
 
-ConVar nb_update_frequency( "nb_update_frequency", ".1", FCVAR_CHEAT );
+ConVar nb_update_frequency( "nb_update_frequency", ".05", FCVAR_CHEAT );
 ConVar nb_update_framelimit( "nb_update_framelimit", ( IsDebug() ) ? "30" : "15", FCVAR_CHEAT );
 ConVar nb_update_maxslide( "nb_update_maxslide", "2", FCVAR_CHEAT );
 ConVar nb_update_debug( "nb_update_debug", "0", FCVAR_CHEAT );
