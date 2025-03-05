@@ -86,7 +86,8 @@ public:
 
 	enum MobType_t
 	{
-		MOB_NORMAL = 0
+		MOB_NORMAL = 0,
+		MOB_GIANT = 1
 	};
 	MobType_t GetMobType() const { return m_nType; }
 	void SetMobType( MobType_t nType );

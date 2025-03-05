@@ -19,7 +19,9 @@
 
 #include "halloween/tf_weapon_spellbook.h"
 
-#define MOB_MODEL "models/bots/skeleton_sniper/skeleton_sniper.mdl"
+#define MELEE_MOB_MODEL "models/bots/skeleton_sniper/skeleton_sniper.mdl"
+#define MELEE_GIANT_MOB_MODEL "models/bots/skeleton_sniper_boss/skeleton_sniper_boss.mdl"
+#define SKELETON_KING_CROWN_MODEL "models/player/items/demo/crown.mdl"
 
 ConVar tf_max_active_mobs( "tf_max_active_mobs", "64", FCVAR_CHEAT );
 
@@ -56,15 +58,14 @@ CTFMeleeMob::CTFMeleeMob()
 	m_locomotor = new CTFMeleeMobLocomotion( this );
 	m_body = new CTFMeleeMobBody( this );
 
-	m_nType = MOB_NORMAL;
+	m_nType = CTFMeleeMob::MobType_t::MOB_NORMAL;
 
 	m_flHeadScale = 1.f;
 
 	m_flAttackRange = 50.f;
 	m_flAttackDamage = 30.f;
-
-	m_flSpecialAttackRange = 500.0f;
-	m_flSpecialAttackDamage = 50.0f;
+	m_flSpecialAttackRange = 500.f;
+	m_flSpecialAttackDamage = 50.f;
 
 	m_bDeathOutputFired = false;
 }
@@ -86,15 +87,17 @@ CTFMeleeMob::~CTFMeleeMob()
 
 void CTFMeleeMob::PrecacheMeleeMob()
 {
-	int nSkeletonModel = PrecacheModel( MOB_MODEL );
+	int nSkeletonModel = PrecacheModel( MELEE_MOB_MODEL );
 	PrecacheGibsForModel( nSkeletonModel );
 
-	if( TFGameRules()->GetHalloweenScenario() == CTFGameRules::HALLOWEEN_SCENARIO_DOOMSDAY )
+	int nSkeletonKingModel = PrecacheModel( MELEE_GIANT_MOB_MODEL );
+	PrecacheGibsForModel( nSkeletonKingModel );
+
+	PrecacheModel( SKELETON_KING_CROWN_MODEL );
+
+	for ( int i=0; i<ARRAYSIZE( s_mobHatModels ) ; ++i )
 	{
-		for ( int i=0; i<ARRAYSIZE( s_mobHatModels ) ; ++i )
-		{
-			PrecacheModel( s_mobHatModels[i] );
-		}
+		PrecacheModel( s_mobHatModels[i] );
 	}
 
 	PrecacheParticleSystem( "bomibomicon_ring" );
@@ -128,15 +131,10 @@ void CTFMeleeMob::Spawn( void )
 {
 	Precache();
 
-	SetModel( MOB_MODEL );
-
 	BaseClass::Spawn();
 
-	const int health = 50;
-	SetHealth( health );
-	SetMaxHealth( health );
 	AddFlag( FL_NPC );
-	
+
 	QAngle qAngle = vec3_angle;
 	qAngle[YAW] = RandomFloat( 0, 360 );
 	SetAbsAngles( qAngle );
@@ -207,9 +205,42 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 	const Vector spawnOrigin = WorldSpaceCenter();
 	const QAngle spawnAngles = QAngle();
 
+	int cashAmount;
+	int ammoAmount;
+	int healthAmount;
+	const char* cashClass;
+	const char* ammoClass;
+	const char* healthClass;
+
+	switch ( m_nType )
+	{
+		case CTFMeleeMob::MobType_t::MOB_NORMAL:
+		default:
+		{
+			cashAmount = 10;
+			ammoAmount = 4;
+			healthAmount = 20;
+			cashClass = "item_mobdrop_cash_small";
+			ammoClass = "item_mobdrop_ammo_small";
+			healthClass = "item_mobdrop_health_small";
+			break;
+		}
+
+		case CTFMeleeMob::MobType_t::MOB_GIANT:
+		{
+			cashAmount = 50;
+			ammoAmount = 10;
+			healthAmount = 100;
+			cashClass = "item_mobdrop_cash_large";
+			ammoClass = "item_mobdrop_ammo_large";
+			healthClass = "item_mobdrop_health_large";
+			break;
+		}
+	}
+
 	// Spawn some cash
-	CTFMobDropCashSmall *pCash = assert_cast<CTFMobDropCashSmall*>(CBaseEntity::CreateNoSpawn(
-		"item_mobdrop_cash_small",
+	CTFMobDrop *pCash = assert_cast<CTFMobDrop*>(CBaseEntity::CreateNoSpawn(
+		cashClass,
 		spawnOrigin,
 		spawnAngles,
 		this
@@ -217,7 +248,7 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pCash )
 	{
-		pCash->SetAmount( 10 );
+		pCash->SetAmount( cashAmount );
 
 		Vector vecImpulse = RandomVector( -1, 1 );
 		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
@@ -229,8 +260,8 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 	}
 
 	// Spawn some ammo
-	CTFMobDropAmmoSmall *pAmmo = assert_cast<CTFMobDropAmmoSmall*>(CBaseEntity::CreateNoSpawn(
-		"item_mobdrop_ammo_small",
+	CTFMobDrop *pAmmo = assert_cast<CTFMobDrop*>(CBaseEntity::CreateNoSpawn(
+		ammoClass,
 		spawnOrigin,
 		spawnAngles,
 		this
@@ -238,7 +269,7 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pAmmo )
 	{
-		pAmmo->SetAmount( 4 );
+		pAmmo->SetAmount( ammoAmount );
 
 		Vector vecImpulse = RandomVector( -1, 1 );
 		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
@@ -250,8 +281,8 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 	}
 
 	// Spawn some health
-	CTFMobDropHealthSmall *pHealth = assert_cast<CTFMobDropHealthSmall*>(CBaseEntity::CreateNoSpawn(
-		"item_mobdrop_health_small",
+	CTFMobDrop *pHealth = assert_cast<CTFMobDrop*>(CBaseEntity::CreateNoSpawn(
+		healthClass,
 		spawnOrigin,
 		spawnAngles,
 		this
@@ -259,7 +290,7 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 
 	if ( pHealth )
 	{
-		pHealth->SetAmount( 20 );
+		pHealth->SetAmount( healthAmount );
 
 		Vector vecImpulse = RandomVector( -1, 1 );
 		vecImpulse.z = RandomFloat( 3.0f, 15.0f );
@@ -379,6 +410,55 @@ bool CTFMeleeMob::ShouldSuicide() const
 void CTFMeleeMob::SetMobType( MobType_t nType )
 {
 	m_nType = nType;
+
+	switch ( m_nType )
+	{
+		case MOB_NORMAL:
+		default:
+		{
+			m_flHeadScale = 1.f;
+
+			m_flAttackRange = 50.f;
+			m_flAttackDamage = 30.f;
+
+			m_flSpecialAttackRange = 500.0f;
+			m_flSpecialAttackDamage = 50.0f;
+
+			SetModel( MELEE_MOB_MODEL );
+			SetModelScale( 1.0f );
+			SetHealth( 50.0f );
+			SetMaxHealth( 50.0f );
+
+			if ( RandomFloat( 0.0f, 1.0f ) < 0.3f )
+			{
+				int iModelIndex = RandomInt( 0, ARRAYSIZE( s_mobHatModels ) - 1 );
+				const char *pszHat = s_mobHatModels[ iModelIndex ];
+				AddHat( pszHat );
+			}
+
+			break;
+		}
+
+		case MOB_GIANT:
+		{
+			m_flHeadScale = 1.f;
+
+			m_flAttackRange = 60.f;
+			m_flAttackDamage = 50.f;
+
+			m_flSpecialAttackRange = 250.0f;
+			m_flSpecialAttackDamage = 80.0f;
+
+			SetModel( MELEE_GIANT_MOB_MODEL );
+			SetModelScale( 2.0f );
+			SetHealth( 500.0f );
+			SetMaxHealth( 500.0f );
+
+			AddHat( SKELETON_KING_CROWN_MODEL );
+
+			break;
+		}
+	}
 }
 
 
@@ -505,9 +585,16 @@ private:
 		const char *pszSoundName;
 		switch ( me->GetMobType() )
 		{
-		default:
+			default:
 			{
 				pszSoundName = "Halloween.skeleton_laugh_medium";
+				break;
+			}
+
+			case CTFMeleeMob::MOB_GIANT:
+			{
+				pszSoundName = "Halloween.skeleton_laugh_giant";
+				break;
 			}
 		}
 
@@ -553,7 +640,7 @@ QueryResultType CTFMeleeMobIntention::IsPositionAllowed( const INextBot *meBot, 
 //---------------------------------------------------------------------------------------------
 float CTFMeleeMobLocomotion::GetRunSpeed( void ) const
 {
-	return 350.f;
+	return 350.0f;
 }
 
 
@@ -569,7 +656,7 @@ float CTFMeleeMobLocomotion::GetStepHeight( void ) const
 // return maximum height of a jump
 float CTFMeleeMobLocomotion::GetMaxJumpHeight( void ) const
 {
-	return 64.0f;
+	return 72.0f;
 }
 
 

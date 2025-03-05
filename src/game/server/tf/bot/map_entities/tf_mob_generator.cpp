@@ -172,7 +172,7 @@ void CTFMobGenerator::SpawnBot( void )
 		GetAbsOrigin(),
 		GetAbsOrigin() + vForward,
 		NULL,
-		CTFMeleeMob::MobType_t::MOB_NORMAL,
+		m_mobType,
 		0.0f,
 		TF_TEAM_HALLOWEEN
 	);

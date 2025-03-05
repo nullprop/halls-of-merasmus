@@ -13,6 +13,7 @@
 #include "../tf_melee_mob.h"
 #include "melee_mob_attack.h"
 #include "melee_mob_special_attack.h"
+#include "melee_mob_giant_special_attack.h"
 
 #define MELEE_MOB_CHASE_MIN_DURATION 3.0f
 
@@ -212,7 +213,7 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 
 	const float specialAttackRange = me->GetSpecialAttackRange();
 	const float meleeAttackRange = me->GetAttackRange();
-	const float meleeAnimationRange = meleeAttackRange * 3;
+	const float meleeAnimationRange = meleeAttackRange * 2.0f;
 
 	const bool isInSpecialAttackRange = me->IsRangeLessThan( m_attackTarget, specialAttackRange );
 	const bool isInMeleeAttackRange = me->IsRangeLessThan( m_attackTarget, meleeAttackRange );
@@ -223,7 +224,21 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 		if ( m_specialAttackTimer.IsElapsed() )
 		{
 			m_specialAttackTimer.Start( RandomFloat( 5.f, 10.f ) );
-			return SuspendFor( new CTFMeleeMobSpecialAttack, "Do Special Attack!" );
+			switch ( me->GetMobType() )
+			{
+				case CTFMeleeMob::MobType_t::MOB_NORMAL:
+				default:
+				{
+					return SuspendFor( new CTFMeleeMobSpecialAttack, "Do Special Attack!" );
+					break;
+				}
+
+				case CTFMeleeMob::MobType_t::MOB_GIANT:
+				{
+					return SuspendFor( new CTFMeleeMobGiantSpecialAttack, "Do Giant Special Attack!" );
+					break;
+				}
+			}
 		}
 	}
 

@@ -943,6 +943,8 @@ $Project "Server (TF)"
 					$File	"tf\player_vs_environment\mob_behavior\melee_mob_attack.h"
 					$File	"tf\player_vs_environment\mob_behavior\melee_mob_special_attack.cpp"
 					$File	"tf\player_vs_environment\mob_behavior\melee_mob_special_attack.h"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_giant_special_attack.cpp"
+					$File	"tf\player_vs_environment\mob_behavior\melee_mob_giant_special_attack.h"
 					$File	"tf\player_vs_environment\mob_behavior\melee_mob_spawn.cpp"
 					$File	"tf\player_vs_environment\mob_behavior\melee_mob_spawn.h"
 				}
