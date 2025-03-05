@@ -43,6 +43,7 @@ void CTFMeleeMobGiantSpecialAttack::DoSpecialAttack( CTFMeleeMob *me )
 {
 	CPVSFilter filter( me->GetAbsOrigin() );
 	TE_TFParticleEffect( filter, 0.0, "bomibomicon_ring", me->GetAbsOrigin(), vec3_angle );
+	me->EmitSound( "Bombinomicon.Explode" );
 
 	int nTargetTeam = TEAM_ANY;
 	if ( me->GetTeamNumber() != TF_TEAM_HALLOWEEN )
