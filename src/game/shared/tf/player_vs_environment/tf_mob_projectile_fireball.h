@@ -35,11 +35,13 @@ public:
 
 	virtual void RocketTouch( CBaseEntity *pOther ) OVERRIDE;
 
+	virtual void FlyThink( void );
+
 	virtual void Explode( const trace_t *pTrace );
 
 	virtual const char *GetProjectileModelName( void ) { return ""; } // We dont have a model by default, and that's OK
 
-	virtual void		ExplodeEffectOnTarget( CBaseEntity *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget );
+	virtual void		ExplodeEffectOnTarget( CBaseEntity *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget, trace_t *pTrace );
 
 	virtual const char *GetExplodeEffectParticle() const	{ return m_pszExplodeParticleName; }
 	void SetExplodeParticleName( const char *pszName )		{ m_pszExplodeParticleName = pszName; }
@@ -59,6 +61,7 @@ protected:
 #ifdef GAME_DLL
 private:
 	const char *m_pszExplodeParticleName;
+	CountdownTimer m_lifeTimer;
 #endif // GAME_DLL
 };
 

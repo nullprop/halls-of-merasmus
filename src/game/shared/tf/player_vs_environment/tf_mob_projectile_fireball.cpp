@@ -9,6 +9,7 @@
 	#include "dlight.h"
 // Server specific.
 #else
+    #include "baseentity.h"
 	#include "ilagcompensationmanager.h"
 	#include "collisionutils.h"
 	#include "particle_parse.h"
@@ -23,13 +24,18 @@ IMPLEMENT_NETWORKCLASS_ALIASED( TFMobProjectile_Fireball, DT_TFMobProjectile_Fir
 	END_NETWORK_TABLE()
 
 LINK_ENTITY_TO_CLASS( tf_mob_projectile_fireball, CTFMobProjectile_Fireball );
-PRECACHE_WEAPON_REGISTER( tf_mob_projectile_fireball);
+PRECACHE_WEAPON_REGISTER( tf_mob_projectile_fireball );
 
 #ifdef GAME_DLL
 void CTFMobProjectile_Fireball::Spawn()
 {
     SetModelScale( GetFireballScale() );
     BaseClass::Spawn();
+
+    m_lifeTimer.Start( 5.0f );
+
+    SetThink( &CTFMobProjectile_Fireball::FlyThink );
+    SetNextThink( gpGlobals->curtime + 0.1f );
 }
 
 void CTFMobProjectile_Fireball::RocketTouch( CBaseEntity *pOther )
@@ -38,7 +44,8 @@ void CTFMobProjectile_Fireball::RocketTouch( CBaseEntity *pOther )
     if ( !pOther || !pOther->IsSolid() || pOther->IsSolidFlagSet( FSOLID_VOLUME_CONTENTS ) || pOther->IsFuncLOD() )
         return;
 
-    if ( pOther == GetOwnerEntity() || pOther->GetParent() == GetOwnerEntity() )
+    CBaseEntity* pOwner = GetOwnerEntity();
+    if ( pOwner && ( pOther == pOwner || pOther->GetParent() == pOwner ) )
         return;
 
     // Handle hitting skybox (disappear).
@@ -46,6 +53,7 @@ void CTFMobProjectile_Fireball::RocketTouch( CBaseEntity *pOther )
 
     if( pTrace->surface.flags & SURF_SKY )
     {
+        SetThink( NULL );
         UTIL_Remove( this );
         return;
     }
@@ -58,8 +66,18 @@ void CTFMobProjectile_Fireball::RocketTouch( CBaseEntity *pOther )
         return;
 
     Explode( pTrace );
+}
 
-    UTIL_Remove( this );
+void CTFMobProjectile_Fireball::FlyThink()
+{
+    if ( m_lifeTimer.HasStarted() && m_lifeTimer.IsElapsed() )
+    {
+        Explode( NULL );
+    }
+    else
+    {
+        SetNextThink( gpGlobals->curtime + 0.1f );
+    }
 }
 
 void CTFMobProjectile_Fireball::Explode( const trace_t *pTrace )
@@ -70,7 +88,7 @@ void CTFMobProjectile_Fireball::Explode( const trace_t *pTrace )
     m_takedamage = DAMAGE_NO;
 
     // Pull out of the wall a bit.
-    if ( pTrace->fraction != 1.0 )
+    if ( pTrace && pTrace->fraction != 1.0 )
     {
         SetAbsOrigin( pTrace->endpos + ( pTrace->plane.normal * 1.0f ) );
     }
@@ -121,14 +139,14 @@ void CTFMobProjectile_Fireball::Explode( const trace_t *pTrace )
             continue;
 
         // Effects on the individual players
-        ExplodeEffectOnTarget( pOwner, pPlayer, pBasePlayer );
+        ExplodeEffectOnTarget( pOwner, pPlayer, pBasePlayer, &trace );
     }
 
     CTakeDamageInfo info;
     info.SetAttacker( pOwner );
     info.SetInflictor( this ); 
     info.SetWeapon( GetLauncher() );
-    info.SetDamage( m_flDamage * 0.1f );
+    info.SetDamage( m_flDamage * 0.5f );
     info.SetDamageCustom( GetCustomDamageType() );
     info.SetDamagePosition( vecOrigin );
     info.SetDamageType( DMG_BLAST );
@@ -136,10 +154,8 @@ void CTFMobProjectile_Fireball::Explode( const trace_t *pTrace )
     CTFRadiusDamageInfo radiusinfo( &info, vecOrigin, GetDamageRadius(), pOwner );
     TFGameRules()->RadiusDamage( radiusinfo );
 
-    // Grenade remove
-    //SetContextThink( &CBaseGrenade::SUB_Remove, gpGlobals->curtime, "RemoveThink" );
-
     // Remove the rocket.
+    SetThink( NULL );
     UTIL_Remove( this );
     
     SetTouch( NULL );
@@ -147,7 +163,7 @@ void CTFMobProjectile_Fireball::Explode( const trace_t *pTrace )
     SetAbsVelocity( vec3_origin );
 }
 
-void CTFMobProjectile_Fireball::ExplodeEffectOnTarget( CBaseEntity *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget )
+void CTFMobProjectile_Fireball::ExplodeEffectOnTarget( CBaseEntity *pThrower, CTFPlayer *pTarget, CBaseCombatCharacter *pBaseTarget, trace_t *pTrace )
 {
     if ( pBaseTarget->GetTeamNumber() == GetTeamNumber() )
         return;
@@ -160,18 +176,15 @@ void CTFMobProjectile_Fireball::ExplodeEffectOnTarget( CBaseEntity *pThrower, CT
         if ( pTarget->m_Shared.InCond( TF_COND_PHASE ) )
             return;
 
-        pTarget->m_Shared.SelfBurn( m_flDamage * 0.25f );
+        pTarget->m_Shared.SelfBurn( m_flDamage * 0.1f );
     }
-
-    const trace_t *pTrace = &CBaseEntity::GetTouchTrace();
-    trace_t *pNewTrace = const_cast<trace_t*>( pTrace );
 
     CBaseEntity *pInflictor = GetLauncher();
     CTakeDamageInfo info;
     info.SetAttacker( pThrower );
     info.SetInflictor( this ); 
     info.SetWeapon( pInflictor );
-    info.SetDamage( m_flDamage );
+    info.SetDamage( m_flDamage * 0.5f );
     info.SetDamageCustom( GetCustomDamageType() );
     info.SetDamagePosition( GetAbsOrigin() );
     info.SetDamageType( DMG_BURN );
@@ -179,7 +192,7 @@ void CTFMobProjectile_Fireball::ExplodeEffectOnTarget( CBaseEntity *pThrower, CT
     // Hurt 'em.
     Vector dir;
     AngleVectors( GetAbsAngles(), &dir );
-    pBaseTarget->DispatchTraceAttack( info, dir, pNewTrace );
+    pBaseTarget->DispatchTraceAttack( info, dir, pTrace );
     ApplyMultiDamage();
 }
 #endif // GAME_DLL
