@@ -219,7 +219,7 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 	const bool isInMeleeAttackRange = me->IsRangeLessThan( m_attackTarget, meleeAttackRange );
 	const bool isInMeleeAnimationRange = me->IsRangeLessThan( m_attackTarget, meleeAnimationRange );
 
-	if ( isInSpecialAttackRange && !isInMeleeAnimationRange )
+	if ( isInSpecialAttackRange && ( !isInMeleeAnimationRange || me->GetMobType() == CTFMeleeMob::MobType_t::MOB_GIANT ) )
 	{
 		if ( m_specialAttackTimer.IsElapsed() )
 		{
