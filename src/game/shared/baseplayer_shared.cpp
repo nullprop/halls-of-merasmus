@@ -1891,6 +1891,8 @@ int CBasePlayer::GetDefaultFOV( void ) const
 	int iFOV = ( m_iDefaultFOV == 0 ) ? g_pGameRules->DefaultFOV() : m_iDefaultFOV;
 	if ( iFOV > MAX_FOV )
 		iFOV = MAX_FOV;
+	if ( iFOV < MIN_FOV )
+		iFOV = MIN_FOV;
 
 	return iFOV;
 }

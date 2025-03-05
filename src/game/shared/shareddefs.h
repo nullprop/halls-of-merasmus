@@ -271,7 +271,9 @@ inline bool IsIndexIntoPlayerArrayValid( int iIndex )
 
 #define MAX_PLACE_NAME_LENGTH		18
 
-#define MAX_FOV						90
+#define MIN_FOV						75
+#define MAX_FOV						110
+#define DEFAULT_FOV					90
 
 //===================================================================================================================
 // Team Defines
