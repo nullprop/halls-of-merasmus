@@ -250,6 +250,11 @@ bool CTFMobDrop::MyTouch( CBasePlayer *pPlayer )
 				float flHealth = m_nAmount;
 				CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pTFPlayer, flHealth, mult_health_frompacks );
 				int nHealthGiven = pTFPlayer->TakeHealth( flHealth, DMG_GENERIC );
+				if ( pTFPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+				{
+					pTFPlayer->EmitSound( "TFPlayer.FlameOut" );
+					pTFPlayer->m_Shared.RemoveCond( TF_COND_BURNING );
+				}
 				break;
 			}
 
