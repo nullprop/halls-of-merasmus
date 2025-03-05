@@ -92,7 +92,7 @@ public:
 	void SetMobType( MobType_t nType );
 	void AddHat( const char *pszModel );
 
-	static CTFMeleeMob* SpawnAtPos( const Vector& vSpawnPos, float flLifeTime = 0.f, int nTeam = TF_TEAM_HALLOWEEN, CBaseEntity *pOwner = NULL, MobType_t nSkeletonType = MOB_NORMAL );
+	static CTFMeleeMob* SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner = NULL, MobType_t nSkeletonType = MOB_NORMAL, float flLifeTime = 0.f, int nTeam = TF_TEAM_HALLOWEEN );
 
 	float GetAttackRange() const { return m_flAttackRange; }
 	float GetAttackDamage() const { return m_flAttackDamage; }

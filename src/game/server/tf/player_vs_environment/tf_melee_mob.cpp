@@ -325,19 +325,31 @@ void CTFMeleeMob::FireDeathOutput( CBaseEntity *pCulprit )
 
 
 //---------------------------------------------------------------------------------------------
-/*static*/ CTFMeleeMob* CTFMeleeMob::SpawnAtPos( const Vector& vSpawnPos, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= SKELETON_NORMAL*/ )
+/*static*/ CTFMeleeMob* CTFMeleeMob::SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= SKELETON_NORMAL*/, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/ )
 {
 	CTFMeleeMob *pMeleeMob = (CTFMeleeMob *)CreateEntityByName( "tf_melee_mob" );
 	if ( pMeleeMob )
 	{
 		pMeleeMob->ChangeTeam( nTeam );
 
+		if (pOwner)
+			pMeleeMob->SetOwnerEntity( pOwner );		
+
+		CTFNavArea *pNav = (CTFNavArea *)TheNavMesh->GetNearestNavArea( vSpawnPos );
+		if ( pNav )
+		{
+			Vector vNavPos;
+			pNav->GetClosestPointOnArea( vSpawnPos, &vNavPos );
+			pMeleeMob->SetAbsOrigin( vNavPos );
+		}
+		else
+		{
+			pMeleeMob->SetAbsOrigin( vSpawnPos );
+		}
+
 		DispatchSpawn( pMeleeMob );
 
-		pMeleeMob->SetAbsOrigin( vSpawnPos );
-		pMeleeMob->SetOwnerEntity( pOwner );
-
-		if ( flLifeTime > 0.f )
+		if ( flLifeTime > 0.0f )
 		{
 			pMeleeMob->StartLifeTimer( flLifeTime );
 		}
