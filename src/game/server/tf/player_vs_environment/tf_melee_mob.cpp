@@ -235,8 +235,8 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 			ammoAmount = 10;
 			healthAmount = 100;
 			cashClass = "item_mobdrop_cash_large";
-			ammoClass = "item_mobdrop_ammo_large";
-			healthClass = "item_mobdrop_health_large";
+			ammoClass = "item_mobdrop_ammo_medium";
+			healthClass = "item_mobdrop_health_medium";
 			break;
 		}
 	}
