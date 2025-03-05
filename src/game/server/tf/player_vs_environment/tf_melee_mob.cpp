@@ -163,8 +163,11 @@ void CTFMeleeMob::Spawn( void )
 	for ( int i=0; i<ITFMeleeMobAutoList::AutoList().Count() && nForceKill > 0; ++i )
 	{
 		CTFMeleeMob *pMeleeMob = static_cast< CTFMeleeMob* >( ITFMeleeMobAutoList::AutoList()[i] );
-		pMeleeMob->ForceSuicide();
-		nForceKill--;
+		if (pMeleeMob->GetMobType() != CTFMeleeMob::MobType_t::MOB_GIANT)
+		{
+			pMeleeMob->ForceSuicide();
+			nForceKill--;
+		}
 	}
 	Assert( nForceKill <= 0 );
 }
