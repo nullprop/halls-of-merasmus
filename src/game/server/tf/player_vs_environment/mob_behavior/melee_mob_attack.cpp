@@ -60,7 +60,7 @@ bool CTFMeleeMobAttack::IsPotentiallyChaseable( CTFMeleeMob *me, CBaseCombatChar
 	{
 		Vector victimAreaPos;
 		victimArea->GetClosestPointOnArea( victim->GetAbsOrigin(), &victimAreaPos );
-		if ( ( victim->GetAbsOrigin() - victimAreaPos ).AsVector2D().IsLengthGreaterThan( 150.0f ) )
+		if ( ( victim->GetAbsOrigin() - victimAreaPos ).AsVector2D().IsLengthGreaterThan( me->GetSpecialAttackRange() ) )
 		{
 			// off the mesh and unreachable - pick a new victim
 			return false;
@@ -196,7 +196,7 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 	}
 
 	// chase after our chase victim
-	const float standAndSwingRange = 50.0f;
+	const float standAndSwingRange = me->GetAttackRange() * 0.9f;
 
 	bool isLineOfSightClear = me->IsLineOfSightClear( m_attackTarget );
 
