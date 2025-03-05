@@ -446,10 +446,10 @@ void CTFMeleeMob::SetMobType( MobType_t nType )
 		{
 			m_flHeadScale = 1.f;
 
-			m_flAttackRange = 60.f;
+			m_flAttackRange = 70.f;
 			m_flAttackDamage = 50.f;
 
-			m_flSpecialAttackRange = 250.0f;
+			m_flSpecialAttackRange = 280.0f;
 			m_flSpecialAttackDamage = 80.0f;
 
 			SetModel( MELEE_GIANT_MOB_MODEL );
