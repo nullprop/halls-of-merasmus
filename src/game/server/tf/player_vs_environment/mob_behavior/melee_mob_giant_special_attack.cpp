@@ -60,6 +60,8 @@ void CTFMeleeMobGiantSpecialAttack::DoSpecialAttack( CTFMeleeMob *me )
 		&pushedPlayers
 	);
 
+	UTIL_ScreenShake( me->GetAbsOrigin(), 25.0f, 5.0f, 1.0f, me->GetSpecialAttackRange() * 3.0f, SHAKE_START );
+
 	CBaseEntity *pAttacker = me->GetOwnerEntity() ? me->GetOwnerEntity() : me;
 	for ( int i=0; i < pushedPlayers.Count(); ++i )
 	{

@@ -10,22 +10,24 @@
 #include "NextBotBehavior.h"
 #include "NextBotGroundLocomotion.h"
 #include "Path/NextBotPathFollow.h"
-#include "tf_melee_mob_body.h"
+#include "tf_flying_mob_body.h"
 #include "tf_mob_common.h"
 
-class CTFMeleeMob;
+class CTFFlyingMob;
 
 
 //----------------------------------------------------------------------------
-class CTFMeleeMobLocomotion : public NextBotGroundLocomotion
+class CTFFlyingMobLocomotion : public CNextBotFlyingLocomotion
 {
 public:
-	CTFMeleeMobLocomotion( INextBot *bot ) : NextBotGroundLocomotion( bot ) { }
-	virtual ~CTFMeleeMobLocomotion() { }
+	CTFFlyingMobLocomotion( INextBot *bot ) : CNextBotFlyingLocomotion( bot ) { }
+	virtual ~CTFFlyingMobLocomotion() { }
 
-	virtual float GetRunSpeed( void ) const;			// get maximum running speed
-	virtual float GetStepHeight( void ) const;				// if delta Z is greater than this, we have to jump to get up
-	virtual float GetMaxJumpHeight( void ) const;			// return maximum height of a jump
+	virtual void SetDesiredSpeed( float speed );			// set desired speed for locomotor movement
+	virtual float GetDesiredSpeed( void ) const;			// returns the current desired speed
+
+	virtual void SetDesiredAltitude( float height );		// how high above our Approach goal do we float?
+	virtual float GetDesiredAltitude( void ) const;
 
 	virtual bool ShouldCollideWith( const CBaseEntity *object ) const;
 
@@ -35,11 +37,11 @@ private:
 
 
 //----------------------------------------------------------------------------
-class CTFMeleeMobIntention : public IIntention
+class CTFFlyingMobIntention : public IIntention
 {
 public:
-	CTFMeleeMobIntention( CTFMeleeMob *me );
-	virtual ~CTFMeleeMobIntention();
+	CTFFlyingMobIntention( CTFFlyingMob *me );
+	virtual ~CTFFlyingMobIntention();
 
 	virtual void Reset( void );
 	virtual void Update( void );
@@ -50,24 +52,24 @@ public:
 	virtual INextBotEventResponder *NextContainedResponder( INextBotEventResponder *current ) const { return NULL; }
 
 private:
-	Behavior< CTFMeleeMob > *m_behavior;
+	Behavior< CTFFlyingMob > *m_behavior;
 };
 
 
 //----------------------------------------------------------------------------
-DECLARE_AUTO_LIST( ITFMeleeMobAutoList );
+DECLARE_AUTO_LIST( ITFFlyingMobAutoList );
 
-class CTFMeleeMob : public NextBotCombatCharacter, public ITFMeleeMobAutoList
+class CTFFlyingMob : public NextBotCombatCharacter, public ITFFlyingMobAutoList
 {
 public:
-	DECLARE_CLASS( CTFMeleeMob, NextBotCombatCharacter );
+	DECLARE_CLASS( CTFFlyingMob, NextBotCombatCharacter );
 	DECLARE_SERVERCLASS();
 	DECLARE_DATADESC();
 
-	CTFMeleeMob();
-	virtual ~CTFMeleeMob();
+	CTFFlyingMob();
+	virtual ~CTFFlyingMob();
 
-	static void PrecacheMeleeMob();
+	static void PrecacheFlyingMob();
 	virtual void Precache();
 	virtual void Spawn( void );
 	virtual int OnTakeDamage_Alive( const CTakeDamageInfo &info );
@@ -75,9 +77,9 @@ public:
 	virtual void UpdateOnRemove();
 
 	// INextBot
-	virtual CTFMeleeMobIntention	*GetIntentionInterface( void ) const	{ return m_intention; }
-	virtual CTFMeleeMobLocomotion	*GetLocomotionInterface( void ) const	{ return m_locomotor; }
-	virtual CTFMeleeMobBody	*GetBodyInterface( void ) const			{ return m_body; }
+	virtual CTFFlyingMobIntention	*GetIntentionInterface( void ) const	{ return m_intention; }
+	virtual CTFFlyingMobLocomotion	*GetLocomotionInterface( void ) const	{ return m_locomotor; }
+	virtual CTFFlyingMobBody	*GetBodyInterface( void ) const			{ return m_body; }
 
 	CBaseAnimating *m_zombieParts;
 
@@ -89,7 +91,7 @@ public:
 	void SetMobType( MobType_t nType );
 	void AddHat( const char *pszModel );
 
-	static CTFMeleeMob* SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner = NULL, MobType_t nSkeletonType = MELEE_NORMAL, float flLifeTime = 0.f, int nTeam = TF_TEAM_HALLOWEEN );
+	static CTFFlyingMob* SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner = NULL, MobType_t nSkeletonType = FLYING_NORMAL, float flLifeTime = 0.f, int nTeam = TF_TEAM_HALLOWEEN );
 
 	float GetAttackRange() const { return m_flAttackRange; }
 	float GetAttackDamage() const { return m_flAttackDamage; }
@@ -98,9 +100,9 @@ public:
 
 	void FireDeathOutput( CBaseEntity *pCulprit );
 private:
-	CTFMeleeMobIntention *m_intention;
-	CTFMeleeMobLocomotion *m_locomotor;
-	CTFMeleeMobBody *m_body;
+	CTFFlyingMobIntention *m_intention;
+	CTFFlyingMobLocomotion *m_locomotor;
+	CTFFlyingMobBody *m_body;
 
 	MobType_t m_nType;
 	CNetworkVar( float, m_flHeadScale );
@@ -128,10 +130,10 @@ private:
 
 
 //--------------------------------------------------------------------------------------------------------------
-class CTFMeleeMobPathCost : public IPathCost
+class CTFFlyingMobPathCost : public IPathCost
 {
 public:
-	CTFMeleeMobPathCost( CTFMeleeMob *me )
+	CTFFlyingMobPathCost( CTFFlyingMob *me )
 	{
 		m_me = me;
 	}
@@ -199,7 +201,7 @@ public:
 		}
 	}
 
-	CTFMeleeMob *m_me;
+	CTFFlyingMob *m_me;
 };
 
 

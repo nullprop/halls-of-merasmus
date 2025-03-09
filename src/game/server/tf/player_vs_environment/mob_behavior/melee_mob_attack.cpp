@@ -219,21 +219,21 @@ ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::Update( CTFMeleeMob *me, float in
 	const bool isInMeleeAttackRange = me->IsRangeLessThan( m_attackTarget, meleeAttackRange );
 	const bool isInMeleeAnimationRange = me->IsRangeLessThan( m_attackTarget, meleeAnimationRange );
 
-	if ( isInSpecialAttackRange && ( !isInMeleeAnimationRange || me->GetMobType() == CTFMeleeMob::MobType_t::MOB_GIANT ) )
+	if ( isInSpecialAttackRange && ( !isInMeleeAnimationRange || me->GetMobType() == MobType_t::MELEE_GIANT ) )
 	{
 		if ( m_specialAttackTimer.IsElapsed() )
 		{
 			m_specialAttackTimer.Start( RandomFloat( 5.f, 10.f ) );
 			switch ( me->GetMobType() )
 			{
-				case CTFMeleeMob::MobType_t::MOB_NORMAL:
+				case MobType_t::MELEE_NORMAL:
 				default:
 				{
 					return SuspendFor( new CTFMeleeMobSpecialAttack, "Do Special Attack!" );
 					break;
 				}
 
-				case CTFMeleeMob::MobType_t::MOB_GIANT:
+				case MobType_t::MELEE_GIANT:
 				{
 					return SuspendFor( new CTFMeleeMobGiantSpecialAttack, "Do Giant Special Attack!" );
 					break;

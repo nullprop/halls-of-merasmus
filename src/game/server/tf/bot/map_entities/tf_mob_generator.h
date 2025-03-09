@@ -34,7 +34,7 @@ private:
 	int m_maxActiveCount;
 	float m_spawnInterval;
 	bool m_bSpawnOnlyWhenTriggered;
-	CTFMeleeMob::MobType_t m_mobType;
+	MobType_t m_mobType;
 	int m_spawnCountRemaining;
 	bool m_bExpended;
 	bool m_bEnabled;
