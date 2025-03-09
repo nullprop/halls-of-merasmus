@@ -470,44 +470,17 @@ void CHudMainMenuOverride::ApplySchemeSettings( IScheme *scheme )
 	m_bBackgroundUsesCharacterImages = true;
 	m_pszForcedCharacterImage = NULL;
 
-	bool bHolidayActive = false;
-	KeyValues *pConditions = NULL;
-	const char *pszHoliday = UTIL_GetActiveHolidayString();
+	KeyValues *pConditions = new KeyValues( "conditions" );
 
+	// spooky!
+	AddSubKeyNamed( pConditions, "if_halloween" );
 
-	if ( pszHoliday && pszHoliday[0] )
+	// Pick a random background
+	int nBackground = RandomInt( 0, 5 );
+	AddSubKeyNamed( pConditions, CFmtStr( "if_halloween_%d", nBackground ) );
+	if ( ( nBackground == 3 ) || ( nBackground == 4 ) )
 	{
-		pConditions = new KeyValues( "conditions" );
-
-		char szCondition[64];
-		Q_snprintf( szCondition, sizeof( szCondition ), "if_%s", pszHoliday );
-		AddSubKeyNamed( pConditions, szCondition );
-
-		if ( FStrEq( pszHoliday, "halloween" ) )
-		{
-
-			// for Halloween we also want to pick a random background
-			int nBackground = RandomInt( 0, 5 );
-
-			AddSubKeyNamed( pConditions, CFmtStr( "if_halloween_%d", nBackground ) );
-			if ( ( nBackground == 3 ) || ( nBackground == 4 ) )
-			{
-				m_bBackgroundUsesCharacterImages = false;
-			}
-		}
-		else if ( FStrEq( pszHoliday, "christmas" ) )
-		{
-			// for Christmas we also want to pick a random background
-			int nBackground = RandomInt( 0, 1 );
-			AddSubKeyNamed( pConditions, CFmtStr( "if_christmas_%d", nBackground ) );
-		}
-
-		bHolidayActive = true;
-	}
-
-	if ( !pConditions )
-	{
-		pConditions = new KeyValues( "conditions" );
+		m_bBackgroundUsesCharacterImages = false;
 	}
 
 	// Put in ratio condition

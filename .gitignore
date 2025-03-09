@@ -1,5 +1,8 @@
 # Files to ignore when considering what GIT should commit.
 
+# Misc mod files
+game/mod_tf/materials/logo/new_tf2_logo.png
+
 # Visual Studio 
 *.suo
 *.user
