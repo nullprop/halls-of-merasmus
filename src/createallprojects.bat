@@ -1,1 +1,1 @@
-devtools\bin\vpc.exe /hl2mp /tf +everything +jolt /mksln everything.sln
+devtools\bin\vpc.exe /tf +everything +jolt /mksln everything.sln
