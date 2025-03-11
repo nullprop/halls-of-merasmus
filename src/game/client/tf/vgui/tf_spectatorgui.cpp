@@ -106,7 +106,6 @@ CTFSpectatorGUI::CTFSpectatorGUI(IViewPort *pViewPort) : CSpectatorGUI(pViewPort
 	m_pStudentHealth = new CTFSpectatorGUIHealth( this, "StudentGUIHealth" );
 	m_pAvatar = NULL;
 
-	m_flNextItemPanelUpdate = 0;
 	m_flNextPlayerPanelUpdate = 0;
 	m_iPrevItemShown = 0;
 	m_iFirstItemShown = 0;
@@ -228,30 +227,44 @@ void CTFSpectatorGUI::ApplySchemeSettings( vgui::IScheme *pScheme )
 		m_pClassOrTeamHintIcon = m_pCycleTargetRevHintIcon = m_pCycleTargetFwdHintIcon = nullptr;
 	}
 
-	if ( m_bCoaching )
-	{
-		if ( m_pTopBar )
-		{
-			m_pTopBar->SetBgColor( Color( 255, 255, 255, 0 ) );
-		}
-		if ( m_pBottomBarBlank )
-		{
-			m_pBottomBarBlank->SetVisible( false );
-		}
-	}
+	// Hide bunch of default TF2 elements...
+	if ( m_pTopBar )
+		m_pTopBar->SetVisible( false );
 
-	if ( m_bCoaching )
-	{
-		if ( m_pClassOrTeamLabel && m_pClassOrTeamLabel->IsVisible() )
-		{
-			m_pClassOrTeamLabel->SetVisible( false );
-		}
+	if ( m_pBottomBarBlank )
+		m_pBottomBarBlank->SetVisible( false );
 
-		if ( m_pClassOrTeamKeyLabel && m_pClassOrTeamKeyLabel->IsVisible() )
-		{
-			m_pClassOrTeamKeyLabel->SetVisible( false );
-		}
-	}
+	if ( m_pClassOrTeamLabel )
+		m_pClassOrTeamLabel->SetVisible( false );
+
+	if ( m_pClassOrTeamHintIcon )
+		m_pClassOrTeamHintIcon->SetVisible( false );
+
+	if ( m_pItemPanel )
+		m_pItemPanel->SetVisible( false );
+
+	if ( m_pMapLabel )
+		m_pMapLabel->SetVisible( false );
+
+	if ( m_pSwitchCamModeKeyLabel )
+		m_pSwitchCamModeKeyLabel->SetVisible( false );
+
+	if ( m_pCycleTargetFwdKeyLabel )
+		m_pCycleTargetFwdKeyLabel->SetVisible( false );
+
+	if ( m_pCycleTargetRevKeyLabel )
+		m_pCycleTargetRevKeyLabel->SetVisible( false );
+
+	if ( m_pStudentHealth )
+		m_pStudentHealth->SetVisible( false );
+
+	if ( m_pReinforcementsLabel )
+		m_pReinforcementsLabel->SetVisible( false );
+
+	if ( m_pBuyBackLabel )
+		m_pBuyBackLabel->SetVisible( false );
+
+	SetDialogVariable( "tip", "" );
 
 	// Stay the same visibility as before the scheme reload.
 	SetVisible( bVisible );
@@ -297,491 +310,16 @@ void CTFSpectatorGUI::Update()
 {
 	BaseClass::Update();
 
-	UpdateReinforcements();
-	UpdateKeyLabels();
-
-	if ( m_flNextItemPanelUpdate < gpGlobals->curtime )
-	{
-		UpdateItemPanel();
-	}
-
 	// If we need to flip tournament mode, do it now
 	if ( m_bPrevTournamentMode != InTournamentGUI() )
 	{
 		InvalidateLayout( false, true );
-	}
-	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( pLocalPlayer && m_bCoaching != pLocalPlayer->m_bIsCoaching )
-	{
-		m_bCoaching = pLocalPlayer->m_bIsCoaching;
-		InvalidateLayout( false, true );
-	}
-	if ( pLocalPlayer && pLocalPlayer->m_hStudent && m_bCoaching )
-	{
-		Vector vecTarget = pLocalPlayer->m_hStudent->GetAbsOrigin();		
-		Vector vecDelta = pLocalPlayer->GetAbsOrigin() - vecTarget;
-		float flDistance = vecDelta.Length();
-		const float kInchesToMeters = 0.0254f;
-		int distance = RoundFloatToInt( flDistance * kInchesToMeters );
-		wchar_t wzValue[32];
-		_snwprintf( wzValue, ARRAYSIZE( wzValue ), L"%u", distance );
-		wchar_t wzText[256];
-		g_pVGuiLocalize->ConstructString_safe( wzText, g_pVGuiLocalize->Find( "#TR_DistanceToStudent" ), 1, wzValue );
-		SetDialogVariable( "student_distance", wzText );
 	}
 
 	if ( m_flNextPlayerPanelUpdate < gpGlobals->curtime )
 	{
 		RecalculatePlayerPanels();
 		m_flNextPlayerPanelUpdate = gpGlobals->curtime + 0.1f;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFSpectatorGUI::UpdateReinforcements( void )
-{
-	if( !m_pReinforcementsLabel )
-		return;
-
-	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( !pPlayer || pPlayer->IsHLTV() ||
-		( pPlayer->GetTeamNumber() != TF_TEAM_RED && pPlayer->GetTeamNumber() != TF_TEAM_BLUE ) ||
-		( pPlayer->m_Shared.GetState() != TF_STATE_OBSERVER && pPlayer->m_Shared.GetState() != TF_STATE_DYING ) ||
-		( pPlayer->GetObserverMode() == OBS_MODE_FREEZECAM ) )
-	{
-		m_pReinforcementsLabel->SetVisible( false );
-		m_pBuyBackLabel->SetVisible( false );
-
-		return;
-	}
-
-	bool bBuyBackVisible = false;
-	wchar_t wLabel[256];
-		
-	if ( TFGameRules()->InStalemate() )
-	{
-		if ( TFGameRules()->IsInArenaMode() == true )
-		{
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( "#TF_Arena_NoRespawning" ), 0 );
-		}
-		else
-		{
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( "#game_respawntime_stalemate" ), 0 );
-		}
-	}
-	else if ( TFGameRules()->State_Get() == GR_STATE_TEAM_WIN )
-	{
-		// a team has won the round
-		g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( "#game_respawntime_next_round" ), 0 );
-	}
-	else
-	{
-		float flNextRespawn = 0.f;
-		bool bQuickSpawn = TFGameRules() && TFGameRules()->IsMannVsMachineMode() && pPlayer->IsPlayerClass( TF_CLASS_SCOUT );
-
-		if ( g_TF_PR )
-		{
-			flNextRespawn = g_TF_PR->GetNextRespawnTime( pPlayer->entindex() );
-		}
-		else if ( !bQuickSpawn )
-		{
-			flNextRespawn = TFGameRules()->GetNextRespawnWave( pPlayer->GetTeamNumber(), pPlayer );
-		}
-
-		if ( !flNextRespawn )
-		{
-			m_pReinforcementsLabel->SetVisible( false );
-			m_pBuyBackLabel->SetVisible( false );
-			return;
-		}
-
-		int iRespawnWait = (flNextRespawn - gpGlobals->curtime);
-		if ( iRespawnWait <= 0 )
-		{
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find("#game_respawntime_now" ), 0 );
-		}
-		else if ( iRespawnWait <= 1.0 )
-		{
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find("#game_respawntime_in_sec" ), 0 );
-		}
-		else
-		{
-			char szSecs[6];
-			wchar_t wSecs[4];
-
-			if ( TFGameRules()->IsMannVsMachineMode() )
-			{
-				bool bNewMethod = tf_mvm_buybacks_method.GetBool();
-				bBuyBackVisible = ( bNewMethod ) ? g_TF_PR->GetNumBuybackCredits( pPlayer->entindex() ) : true;
-
-				if ( bBuyBackVisible )
-				{
-					// When using the new system, we display "Hit '%use_action_slot_item%' to RESPAWN INSTANTLY! (%s1 remaining this wave)"
-					// When using the old system, we display "Hit '%use_action_slot_item%' to pay %s1 credits and RESPAWN INSTANTLY!"
-					int nCost = ( bNewMethod ) ? g_TF_PR->GetNumBuybackCredits( pPlayer->entindex() ) : iRespawnWait * MVM_BUYBACK_COST_PER_SEC;
-					const char *pszString = ( bNewMethod ) ? "#TF_PVE_Buyback_Fixed" : "#TF_PVE_Buyback";
-
-					Q_snprintf( szSecs, sizeof( szSecs ), "%d", nCost );
-					g_pVGuiLocalize->ConvertANSIToUnicode( szSecs, wSecs, sizeof( wSecs ) );
-					g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( pszString ), 1, wSecs );
-
-					wchar_t wBuyBack[256];
-					UTIL_ReplaceKeyBindings( wLabel, 0, wBuyBack, sizeof( wBuyBack ), GAME_ACTION_SET_SPECTATOR );
-
-					m_pBuyBackLabel->SetText( wBuyBack, true );
-				}
-			}
-
-			Q_snprintf( szSecs, sizeof(szSecs), "%d", iRespawnWait );
-
-			g_pVGuiLocalize->ConvertANSIToUnicode(szSecs, wSecs, sizeof(wSecs));
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find("#game_respawntime_in_secs" ), 1, wSecs );
-		}
-	}
-
-	m_pReinforcementsLabel->SetVisible( true );
-	m_pReinforcementsLabel->SetText( wLabel, true );
-	m_pBuyBackLabel->SetVisible( bBuyBackVisible );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CTFSpectatorGUI::UpdateKeyLabels( void )
-{
-	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-
-	bool bSteamController = ::input->IsSteamControllerActive();
-
-	if ( InTournamentGUI() == false )
-	{
-		// get the desired player class	
-		int iClass = TF_CLASS_UNDEFINED;
-		bool bIsHLTV = engine->IsHLTV();
-		
-		if ( pPlayer )
-		{
-			iClass = pPlayer->m_Shared.GetDesiredPlayerClassIndex();
-		}
-
-		// if it's time to change the tip, or the player has changed desired class, update the tip
-		if ( ( gpGlobals->curtime >= m_flNextTipChangeTime ) || ( iClass != m_iTipClass ) )
-		{
-			if ( bIsHLTV )
-			{
-				const wchar_t *wzTip = g_pVGuiLocalize->Find( "#Tip_HLTV" );
-
-				if ( wzTip )
-				{
-					SetDialogVariable( "tip", wzTip );
-				}
-			}
-			else
-			{
-				wchar_t wzTipLabel[512]=L"";
-				const wchar_t *wzTip = g_TFTips.GetNextClassTip( iClass );
-				Assert( wzTip && wzTip[0] );
-				g_pVGuiLocalize->ConstructString_safe( wzTipLabel, g_pVGuiLocalize->Find( "#Tip_Fmt" ), 1, wzTip );
-				SetDialogVariable( "tip", wzTipLabel );
-			}
-			
-			m_flNextTipChangeTime = gpGlobals->curtime + 10.0f;
-			m_iTipClass = iClass;
-		}
-
-		if ( m_pClassOrTeamLabel )
-		{
-			if ( pPlayer )
-			{
-				static wchar_t wzFinal[512] = L"";
-				const wchar_t *wzTemp = NULL;
-				const char *szAction = nullptr;
-
-				if ( TFGameRules() && TFGameRules()->IsInTraining() )
-				{
-					wzTemp = L"";
-				}
-				else if ( bIsHLTV )
-				{
-					wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_AutoDirector" );
-				}
-				else if ( pPlayer->GetTeamNumber() == TEAM_SPECTATOR && TFGameRules()->IsInArenaMode() == false )
-				{
-					if ( bSteamController )
-					{
-						wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_ChangeTeam_NoKey" );
-						szAction = "changeteam";
-					}
-					else
-					{
-						wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_ChangeTeam" );
-					}
-				}
-				else
-				{
-					if ( bSteamController )
-					{
-						wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_ChangeClass_NoKey" );
-						szAction = "changeclass";
-					}
-					else
-					{
-						wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_ChangeClass" );
-					}
-				}
-
-				if ( wzTemp )
-				{
-					UTIL_ReplaceKeyBindings( wzTemp, 0, wzFinal, sizeof( wzFinal ) );
-				}
-
-				m_pClassOrTeamLabel->SetText( wzFinal, true );
-
-				if ( m_pClassOrTeamHintIcon )
-				{
-					if ( szAction && m_pClassOrTeamLabel->IsVisible() )
-					{
-						m_pClassOrTeamHintIcon->SetVisible( true );
-						m_pClassOrTeamHintIcon->SetAction( szAction );
-					}
-					else
-					{
-						m_pClassOrTeamHintIcon->SetVisible( false );
-					}
-				}
-			}
-		}
-
-		static ConVarRef cl_hud_minmode( "cl_hud_minmode", true );
-		if ( m_bCoaching == true || ( cl_hud_minmode.IsValid() && ( cl_hud_minmode.GetBool() == false ) ) )
-		{
-			if ( m_pSwitchCamModeKeyLabel )
-			{
-				if ( ( pPlayer && pPlayer->GetTeamNumber() > TEAM_SPECTATOR ) && ( ( mp_forcecamera.GetInt() == OBS_ALLOW_TEAM ) || ( mp_forcecamera.GetInt() == OBS_ALLOW_NONE ) || mp_fadetoblack.GetBool() ) )
-				{
-					if ( m_pSwitchCamModeKeyLabel->IsVisible() )
-					{
-						m_pSwitchCamModeKeyLabel->SetVisible( false );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "SwitchCamModeLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( false );
-						}
-					}
-				}
-				else
-				{
-					if ( !m_pSwitchCamModeKeyLabel->IsVisible() )
-					{
-						m_pSwitchCamModeKeyLabel->SetVisible( true );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "SwitchCamModeLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( true );
-						}
-					}
-
-					wchar_t wLabel[256] = L"";
-					const wchar_t *wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_SwitchCamModeKey" );
-					UTIL_ReplaceKeyBindings( wzTemp, 0, wLabel, sizeof( wLabel ) );
-					m_pSwitchCamModeKeyLabel->SetText( wLabel, true );
-				}
-			}
-
-			bool bSuppressCycle = ( pPlayer && pPlayer->GetTeamNumber() > TEAM_SPECTATOR ) && ( mp_fadetoblack.GetBool() || ( mp_forcecamera.GetInt() == OBS_ALLOW_NONE ) );
-
-			if ( m_pCycleTargetFwdKeyLabel )
-			{
-				if ( bSuppressCycle )
-				{
-					if ( m_pCycleTargetFwdKeyLabel->IsVisible() )
-					{
-						m_pCycleTargetFwdKeyLabel->SetVisible( false );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "CycleTargetFwdLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( false );
-						}
-					}
-				}
-				else
-				{
-					if ( !m_pCycleTargetFwdKeyLabel->IsVisible() )
-					{
-						m_pCycleTargetFwdKeyLabel->SetVisible( true );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "CycleTargetFwdLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( true );
-						}
-					}
-
-					wchar_t wLabel[ 256 ] = L"";
-					const wchar_t *wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_CycleTargetFwdKey" );
-					UTIL_ReplaceKeyBindings( wzTemp, 0, wLabel, sizeof( wLabel ) );
-					m_pCycleTargetFwdKeyLabel->SetText( wLabel, true );
-				}
-
-				if ( bSteamController )
-				{
-					m_pCycleTargetFwdKeyLabel->SetVisible( false );
-				}
-			}
-
-			if ( m_pCycleTargetFwdHintIcon )
-				m_pCycleTargetFwdHintIcon->SetVisible( bSteamController && !bSuppressCycle );
-
-
-			if ( m_pCycleTargetRevKeyLabel )
-			{
-				if ( bSuppressCycle )
-				{
-					if ( m_pCycleTargetRevKeyLabel->IsVisible() )
-					{
-						m_pCycleTargetRevKeyLabel->SetVisible( false );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "CycleTargetRevLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( false );
-						}
-					}
-				}
-				else
-				{
-					if ( !m_pCycleTargetRevKeyLabel->IsVisible() )
-					{
-						m_pCycleTargetRevKeyLabel->SetVisible( true );
-
-						Label *pLabel = dynamic_cast<Label *>( FindChildByName( "CycleTargetRevLabel" ) );
-						if ( pLabel )
-						{
-							pLabel->SetVisible( true );
-						}
-					}
-
-					wchar_t wLabel[ 256 ] = L"";
-					const wchar_t *wzTemp = g_pVGuiLocalize->Find( "#TF_Spectator_CycleTargetRevKey" );
-					UTIL_ReplaceKeyBindings( wzTemp, 0, wLabel, sizeof( wLabel ) );
-					m_pCycleTargetRevKeyLabel->SetText( wLabel, true );
-				}
-
-				if ( bSteamController )
-				{
-					m_pCycleTargetRevKeyLabel->SetVisible( false );
-				}
-			}
-
-			if ( m_pCycleTargetRevHintIcon )
-				m_pCycleTargetRevHintIcon->SetVisible( bSteamController && !bSuppressCycle );
-
-
-			if ( m_pMapLabel )
-			{
-				wchar_t wMapName[32];
-				wchar_t wLabel[256];
-				char szMapName[32];
-
-				char tempname[128];
-				Q_FileBase( engine->GetLevelName(), tempname, sizeof( tempname ) );
-				Q_strlower( tempname );
-
-				if ( IsX360() )
-				{
-					char *pExt = Q_stristr( tempname, ".360" );
-					if ( pExt )
-					{
-						*pExt = '\0';
-					}
-				}
-
-				Q_strncpy( szMapName, GetMapDisplayName( tempname ), sizeof( szMapName ) );
-
-				g_pVGuiLocalize->ConvertANSIToUnicode( szMapName, wMapName, sizeof(wMapName));
-				g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( "#Spec_Map" ), 1, wMapName );
-
-				m_pMapLabel->SetText( wLabel ); 
-			}
-		}
-	}
-
-	// coaching stuff
-	if ( pPlayer && pPlayer->m_hStudent )
-	{
-		int iHealth = 0;
-		int iMaxHealth = 1;
-		int iMaxBuffedHealth = 0;
-
-		C_TFPlayer *pStudent = pPlayer->m_hStudent;
-		{
-			wchar_t wPlayerName[MAX_PLAYER_NAME_LENGTH];
-			wchar_t wLabel[256];
-			const char* pStudentName = g_TF_PR->GetPlayerName( pStudent->entindex() );
-
-			g_pVGuiLocalize->ConvertANSIToUnicode( pStudentName, wPlayerName, sizeof(wPlayerName));
-			g_pVGuiLocalize->ConstructString_safe( wLabel, g_pVGuiLocalize->Find( "#TF_Coach_Student_Prefix" ), 1, wPlayerName );
-			
-			SetDialogVariable( "student_name", wLabel ); 
-		}
-		for ( int i = 1; i <= 2; ++i )
-		{
-			wchar_t wLabel[256] = L"";
-			const wchar_t *wzTemp = g_pVGuiLocalize->Find( CFmtStr1024( "#TF_Coach_Slot%uLabel", i ) );
-			UTIL_ReplaceKeyBindings( wzTemp, 0, wLabel, sizeof( wLabel ) );
-			SetDialogVariable( CFmtStr1024( "coach_command_%u", i ), wLabel );
-		}
-		if ( m_pAvatar )
-		{
-			m_pAvatar->SetShouldDrawFriendIcon( false );
-
-			if ( steamapicontext && steamapicontext->SteamUser() )
-			{
-				CSteamID studentSteamID;
-				if ( pStudent->GetSteamID( &studentSteamID ) )
-				{
-					m_pAvatar->SetPlayer( studentSteamID, k_EAvatarSize64x64 );
-				}
-				else
-				{
-					m_pAvatar->ClearAvatar();
-				}				
-			}
-		}
-
-		// don't show crosshair when viewing the world from the student's POV
-		bool bShowCrosshair = pPlayer->GetObserverMode() != OBS_MODE_IN_EYE;
-		vgui::Panel *pCrosshair = FindChildByName( "Crosshair" );
-		if ( pCrosshair && pCrosshair->IsVisible() != bShowCrosshair )
-		{
-			pCrosshair->SetVisible( bShowCrosshair );
-		}
-
-		iHealth = pStudent->GetHealth();
-		iMaxHealth = pStudent->GetMaxHealth();
-		iMaxBuffedHealth = pStudent->m_Shared.GetMaxBuffedHealth();
-
-		if ( m_pStudentHealth )
-		{
-			m_pStudentHealth->SetHealth( iHealth, iMaxHealth, iMaxBuffedHealth );
-
-			if ( !m_pStudentHealth->IsVisible() )
-			{
-				m_pStudentHealth->SetVisible( true );
-			}
-		}
-	}
-	else
-	{
-		if ( m_pStudentHealth && m_pStudentHealth->IsVisible() )
-		{
-			m_pStudentHealth->SetVisible( false );
-		}
 	}
 }
 
@@ -882,13 +420,9 @@ void CTFSpectatorGUI::ShowPanel(bool bShow)
 			}
 		}
 
-		UpdateKeyLabels();
-
 		if ( bShow )
 		{
 			m_flNextPlayerPanelUpdate = 0;
-			m_flNextItemPanelUpdate = 0;
-			UpdateItemPanel();	
 			RecalculatePlayerPanels();
 		}
 	}
@@ -903,11 +437,7 @@ void CTFSpectatorGUI::FireGameEvent( IGameEvent *event )
 {
 	const char *pEventName = event->GetName();
 
-	if ( Q_strcmp( "spec_target_updated", pEventName ) == 0 )
-	{
-		UpdateItemPanel();
-	}
-	else if ( Q_strcmp( "player_death", pEventName ) == 0 && m_bCoaching )
+	if ( Q_strcmp( "player_death", pEventName ) == 0 && m_bCoaching )
 	{
 		CBaseEntity *pVictim = ClientEntityList().GetEnt( engine->GetPlayerForUserID( event->GetInt("userid") ) );
 		C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
@@ -920,114 +450,6 @@ void CTFSpectatorGUI::FireGameEvent( IGameEvent *event )
 			NotificationQueue_Add( pNotification );
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFSpectatorGUI::UpdateItemPanel( bool bForce )
-{
-	bool bVisible = false;
-
-	// Stat panel prevents the item panel from showing.
-	CTFStatPanel *pStatPanel = GET_HUDELEMENT( CTFStatPanel );
-	if ( ( pStatPanel && pStatPanel->IsVisible() ) || ( TFGameRules() && TFGameRules()->State_Get() == GR_STATE_TEAM_WIN ) || (!cl_spec_carrieditems.GetBool() && !bForce) )
-	{
-		bVisible = false;
-	}
-	else 
-	{
-		C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-		if ( pLocalPlayer )
-		{
-			C_TFPlayer *pPlayer = ToTFPlayer( pLocalPlayer->GetObserverTarget() );
-			if ( pPlayer && pPlayer != pLocalPlayer )
-			{
-				if ( m_flNextItemPanelUpdate && m_flNextItemPanelUpdate > gpGlobals->curtime && m_hPrevItemPlayer == pPlayer )
-					return;
-
-				if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() && ( pPlayer->GetTeamNumber() == TF_TEAM_PVE_INVADERS ) )
-					return;
-
-				if ( m_hPrevItemPlayer != pPlayer )
-				{
-					m_iPrevItemShown = 0;
-					m_iFirstItemShown = 0;
-					m_bShownItems = false;
-					m_hPrevItemPlayer = pPlayer;
-				}
-				m_flNextItemPanelUpdate = gpGlobals->curtime + 8.0;
-
-				// Don't reshow the items for a player unless we're being forced to
-				if ( !m_bShownItems || bForce )
-				{
-					// If our killer is using a non-standard item, display its stats.
-					// Loop through all items and pick one at random, so that we show non-active weapons as well.
-					CEconItemView *pItemToShow = pPlayer->GetInspectItem( &m_iPrevItemShown );
-
-					// If we've looped, we're done. Hide the item.
-					if ( m_iFirstItemShown && m_iFirstItemShown == m_iPrevItemShown )
-					{
-						m_iFirstItemShown = 0;
-						m_iPrevItemShown = 0;
-						pItemToShow = NULL;
-						m_bShownItems = true;
-					}
-
-					if ( pItemToShow && !pItemToShow->IsUndefined() )
-					{
-						if ( !m_iFirstItemShown )
-						{
-							m_iFirstItemShown = m_iPrevItemShown;
-						}
-
-						Label* pItemLabel = m_pItemPanel->FindControl<Label>( "ItemLabel" );
-
-						CBasePlayer *pOriginalOwner = GetPlayerByAccountID( pItemToShow->GetAccountID() );
-
-						// Change the label text depending on if the original owner is holding the weapon
-						if ( pItemLabel )
-						{
-							CSteamID steamIDOwner;
-							pPlayer->GetSteamID( &steamIDOwner );
-							bool bOriginalOwner = !pOriginalOwner || steamIDOwner.GetAccountID() == pItemToShow->GetAccountID();
-							pItemLabel->SetText( bOriginalOwner ? "#FreezePanel_Item" : "#FreezePanel_ItemOtherOwner" );
-						}
-						
-
-						bVisible = true;
-						m_pItemPanel->SetDialogVariable( "killername", g_TF_PR->GetPlayerName( pPlayer->entindex() ) );
-
-						// Set the item owner's name
-						if ( pOriginalOwner )
-						{
-							m_pItemPanel->SetDialogVariable( "ownername", g_TF_PR->GetPlayerName( pOriginalOwner->entindex() ) );
-						}
-
-						m_pItemPanel->SetItem( pItemToShow );
-
-						// force update description to get the correct panel size
-						m_pItemPanel->UpdateDescription();
-						m_pItemPanel->SetPos( ScreenWidth() - XRES( 10 ) - m_pItemPanel->GetWide(), ScreenHeight() - YRES( 12 ) - m_pItemPanel->GetTall() );
-					}	
-				}
-			}
-		}
-	}
-
-	if ( m_pItemPanel->IsVisible() != bVisible )
-	{
-		m_pItemPanel->SetVisible( bVisible );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFSpectatorGUI::ForceItemPanelCycle( void )
-{
-	m_flNextItemPanelUpdate = 0;
-	UpdateItemPanel( true );		
 }
 
 //-----------------------------------------------------------------------------

@@ -23,7 +23,6 @@ class CTFFreezePanel;
 class CItemQuickSwitchPanel;
 class CHudEurekaEffectTeleportMenu;
 class CHudMenuTauntSelection;
-class CHudInspectPanel;
 class CHudUpgradePanel;
 #if defined( _X360 )
 class CTFClientScoreBoardDialog;
@@ -130,7 +129,6 @@ private:
 
 	CTFFreezePanel			*m_pFreezePanel;
 	CItemQuickSwitchPanel	*m_pQuickSwitch;
-	CHudInspectPanel		*m_pInspectPanel;
 	IGameUI					*m_pGameUI;
 	bool					m_wasConnectedLastUpdate;
 

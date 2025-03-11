@@ -59,7 +59,6 @@
 #include "c_team.h"
 #include "tf_hud_menu_eureka_teleport.h"
 #include "tf_hud_menu_taunt_selection.h"
-#include "tf_hud_inspectpanel.h"
 #include "engine/IEngineSound.h"
 #include "tf_partyclient.h"
 
@@ -365,7 +364,6 @@ ClientModeTFNormal::ClientModeTFNormal()
 	m_pGameUI = NULL;
 	m_pFreezePanel = NULL;
 	m_pQuickSwitch = NULL;
-	m_pInspectPanel = NULL;
 	m_wasConnectedLastUpdate = false;
 	m_lastServerIP = 0;
 	m_lastServerPort = 0;
@@ -428,9 +426,6 @@ void ClientModeTFNormal::Init()
 
 	m_pTeamGoalTournament = (CHudTeamGoalTournament *)GET_HUDELEMENT( CHudTeamGoalTournament );
 	Assert( m_pTeamGoalTournament );
-
-	m_pInspectPanel = (CHudInspectPanel *)GET_HUDELEMENT( CHudInspectPanel );
-	Assert( m_pInspectPanel );
 
 	m_wasConnectedLastUpdate = false;
 
@@ -1542,18 +1537,9 @@ int	ClientModeTFNormal::HudElementKeyInput( int down, ButtonCode_t keynum, const
 		}
 	}
 
-
 	if ( m_pEurekaTeleportMenu )
 	{
 		if ( !m_pEurekaTeleportMenu->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
-		{
-			return 0;
-		}
-	}
-
-	if ( m_pInspectPanel )
-	{
-		if ( !m_pInspectPanel->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
 		{
 			return 0;
 		}

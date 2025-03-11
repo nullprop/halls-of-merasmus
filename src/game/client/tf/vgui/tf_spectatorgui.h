@@ -63,15 +63,9 @@ public:
 	virtual void Update( void );
 	virtual bool NeedsUpdate( void );
 	virtual bool ShouldShowPlayerLabel( int specmode ) { return false; }
-	void		 UpdateReinforcements( void );
 	virtual void ShowPanel(bool bShow);
 	virtual Color GetBlackBarColor( void ) { return Color(52,48,45, 255); }
-
-	void		UpdateKeyLabels( void );
-
 	virtual void FireGameEvent( IGameEvent *event );
-	void		UpdateItemPanel( bool bForce = false );
-	void		ForceItemPanelCycle( void );
 	virtual const char *GetResFile( void );
 
 	// Tournament mode handling
@@ -111,7 +105,6 @@ protected:
 	CSCHintIcon				*m_pCycleTargetRevHintIcon;
 	CSCHintIcon				*m_pClassOrTeamHintIcon;
 
-	float					m_flNextItemPanelUpdate;
 	EHANDLE					m_hPrevItemPlayer;
 	int						m_iPrevItemShown;
 	int						m_iFirstItemShown;
