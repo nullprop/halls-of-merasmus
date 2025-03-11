@@ -14,6 +14,7 @@
 
 #include "tf_flying_mob.h"
 #include "mob_behavior/flying_mob_spawn.h"
+#include "map_entities/tf_mob_generator.h"
 
 #define FLYING_MOB_MODEL "models/props_halloween/halloween_demoeye.mdl"
 
@@ -174,7 +175,7 @@ int CTFFlyingMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 //-----------------------------------------------------------------------------------------------------
 void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 {
-	EmitSound( "Halloween.EyeballBossDie" ); // "Halloween.MonoculusBossDeath"
+	EmitSound( "Halloween.MonoculusBossDeath" ); // "Halloween.EyeballBossDie"
 	DispatchParticleEffect( "eyeboss_death", GetAbsOrigin(), GetAbsAngles() );
 
 	const Vector spawnOrigin = WorldSpaceCenter();
@@ -278,32 +279,50 @@ void CTFFlyingMob::FireDeathOutput( CBaseEntity *pCulprit )
 	
 	m_bDeathOutputFired = true;
 	m_OnDeath.FireOutput( pCulprit, this );
+
+	// Fire tf_mob_generator output
+	CTFMobGenerator* pGenerator = (CTFMobGenerator *)GetOwnerEntity();
+	if ( pGenerator )
+	{
+		pGenerator->OnMobKilled( this );
+	}
 }
 
 
 //---------------------------------------------------------------------------------------------
-/*static*/ CTFFlyingMob* CTFFlyingMob::SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= SKELETON_NORMAL*/, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/ )
+/*static*/ CTFFlyingMob* CTFFlyingMob::SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= FLYING_NORMAL*/, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/ )
 {
 	CTFFlyingMob *pFlyingMob = (CTFFlyingMob *)CreateEntityByName( "tf_flying_mob" );
 	if ( pFlyingMob )
 	{
 		pFlyingMob->ChangeTeam( nTeam );
 
-		if (pOwner)
+		if ( pOwner )
 			pFlyingMob->SetOwnerEntity( pOwner );		
+
+		Vector vActualSpawnPos = vSpawnPos;
 
 		CTFNavArea *pNav = (CTFNavArea *)TheNavMesh->GetNearestNavArea( vSpawnPos );
 		if ( pNav )
 		{
-			Vector vNavPos;
-			pNav->GetClosestPointOnArea( vSpawnPos, &vNavPos );
-			pFlyingMob->SetAbsOrigin( vNavPos );
-		}
-		else
-		{
-			pFlyingMob->SetAbsOrigin( vSpawnPos );
+			pNav->GetClosestPointOnArea( vSpawnPos, &vActualSpawnPos );
 		}
 
+		vActualSpawnPos.z += tf_flying_mob_hover_height.GetFloat();
+
+		trace_t trace;
+		pFlyingMob->GetLocomotionInterface()->TraceHull(
+			vActualSpawnPos,
+			vActualSpawnPos + Vector( 0, 0, -tf_flying_mob_hover_height.GetFloat() ), 
+			pFlyingMob->WorldAlignMins(), pFlyingMob->WorldAlignMaxs(), 
+			pFlyingMob->GetBodyInterface()->GetSolidMask(), NULL, &trace
+		);
+		if ( trace.startsolid && !trace.allsolid )
+		{
+			vActualSpawnPos = trace.endpos;
+		}
+
+		pFlyingMob->SetAbsOrigin( vActualSpawnPos );
 		DispatchSpawn( pFlyingMob );
 
 		if ( flLifeTime > 0.0f )

@@ -14,6 +14,7 @@
 
 #include "tf_melee_mob.h"
 #include "mob_behavior/melee_mob_spawn.h"
+#include "map_entities/tf_mob_generator.h"
 
 #define MELEE_MOB_MODEL "models/bots/skeleton_sniper/skeleton_sniper.mdl"
 #define MELEE_GIANT_MOB_MODEL "models/bots/skeleton_sniper_boss/skeleton_sniper_boss.mdl"
@@ -332,32 +333,36 @@ void CTFMeleeMob::FireDeathOutput( CBaseEntity *pCulprit )
 	
 	m_bDeathOutputFired = true;
 	m_OnDeath.FireOutput( pCulprit, this );
+
+	// Fire tf_mob_generator output
+	CTFMobGenerator* pGenerator = (CTFMobGenerator *)GetOwnerEntity();
+	if ( pGenerator )
+	{
+		pGenerator->OnMobKilled( this );
+	}
 }
 
 
 //---------------------------------------------------------------------------------------------
-/*static*/ CTFMeleeMob* CTFMeleeMob::SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= SKELETON_NORMAL*/, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/ )
+/*static*/ CTFMeleeMob* CTFMeleeMob::SpawnAtPos( const Vector& vSpawnPos, const Vector& vFaceTowards, CBaseEntity *pOwner /*= NULL*/, MobType_t nMobType /*= MELEE_NORMAL*/, float flLifeTime /*= 0.f*/, int nTeam /*= TF_TEAM_HALLOWEEN*/ )
 {
 	CTFMeleeMob *pMeleeMob = (CTFMeleeMob *)CreateEntityByName( "tf_melee_mob" );
 	if ( pMeleeMob )
 	{
 		pMeleeMob->ChangeTeam( nTeam );
 
-		if (pOwner)
+		if ( pOwner )
 			pMeleeMob->SetOwnerEntity( pOwner );		
+
+		Vector vActualSpawnPos = vSpawnPos;
 
 		CTFNavArea *pNav = (CTFNavArea *)TheNavMesh->GetNearestNavArea( vSpawnPos );
 		if ( pNav )
 		{
-			Vector vNavPos;
-			pNav->GetClosestPointOnArea( vSpawnPos, &vNavPos );
-			pMeleeMob->SetAbsOrigin( vNavPos );
-		}
-		else
-		{
-			pMeleeMob->SetAbsOrigin( vSpawnPos );
+			pNav->GetClosestPointOnArea( vSpawnPos, &vActualSpawnPos );
 		}
 
+		pMeleeMob->SetAbsOrigin( vSpawnPos );
 		DispatchSpawn( pMeleeMob );
 
 		if ( flLifeTime > 0.0f )
