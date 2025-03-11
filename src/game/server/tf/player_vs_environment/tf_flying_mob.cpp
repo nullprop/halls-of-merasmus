@@ -57,7 +57,7 @@ CTFFlyingMob::CTFFlyingMob()
 	m_eyeOffset = vec3_origin;
 	m_lookAtSpot = vec3_origin;
 
-	m_flAttackRange = 800.f;
+	m_flAttackRange = 1500.f;
 	m_flAttackDamage = 30.f;
 
 	m_bDeathOutputFired = false;
@@ -87,13 +87,9 @@ void CTFFlyingMob::PrecacheFlyingMob()
 	PrecacheGibsForModel( nSkeletonModel );
 
 	PrecacheScriptSound( "Halloween.EyeballBossLaugh" );
-	PrecacheScriptSound( "Halloween.EyeballBossBigLaugh" );
 	PrecacheScriptSound( "Halloween.EyeballBossDie" );
 	PrecacheScriptSound( "Halloween.EyeballBossBecomeAlert" );
-	
-
-	PrecacheScriptSound( "Halloween.MonoculusBossSpawn" );
-	PrecacheScriptSound( "Halloween.MonoculusBossDeath" );
+	PrecacheScriptSound( "Halloween.Merasmus_Hiding_Explode" );
 
 	PrecacheParticleSystem( "eyeboss_death" );
 	PrecacheParticleSystem( "eyeboss_aura_angry" );
@@ -175,7 +171,7 @@ int CTFFlyingMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 //-----------------------------------------------------------------------------------------------------
 void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 {
-	EmitSound( "Halloween.MonoculusBossDeath" ); // "Halloween.EyeballBossDie"
+	EmitSound( "Halloween.Merasmus_Hiding_Explode" );
 	DispatchParticleEffect( "eyeboss_death", GetAbsOrigin(), GetAbsAngles() );
 
 	const Vector spawnOrigin = WorldSpaceCenter();
@@ -361,7 +357,7 @@ void CTFFlyingMob::SetMobType( MobType_t nType )
 		case MobType_t::FLYING_NORMAL:
 		default:
 		{
-			m_flAttackRange = 800.f;
+			m_flAttackRange = 1500.f;
 			m_flAttackDamage = 30.f;
 
 			SetModel( FLYING_MOB_MODEL );
@@ -454,7 +450,7 @@ private:
 		{
 			default:
 			{
-				pszSoundName = RandomInt(0, 1) == 0 ? "Halloween.EyeballBossLaugh" : "Halloween.EyeballBossBigLaugh";
+				pszSoundName = "Halloween.EyeballBossLaugh";
 				break;
 			}
 		}

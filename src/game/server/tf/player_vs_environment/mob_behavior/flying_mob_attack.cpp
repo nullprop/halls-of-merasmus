@@ -19,7 +19,7 @@
 
 extern ConVar tf_flying_mob_speed;
 
-ConVar tf_flying_mob_projectile_speed( "tf_flying_mob_projectile_speed", "600", FCVAR_CHEAT );
+ConVar tf_flying_mob_projectile_speed( "tf_flying_mob_projectile_speed", "700", FCVAR_CHEAT );
 ConVar tf_flying_mob_attack_interval_min( "tf_flying_mob_attack_interval_min", "1.2", FCVAR_CHEAT );
 ConVar tf_flying_mob_attack_interval_max( "tf_flying_mob_attack_interval_max", "1.6", FCVAR_CHEAT );
 
