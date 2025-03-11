@@ -140,7 +140,7 @@ public:
 	static void PrecacheFlyingMob();
 	virtual void Precache();
 	virtual void Spawn( void );
-	virtual int OnTakeDamage_Alive( const CTakeDamageInfo &info );
+	virtual int OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo );
 	virtual void Event_Killed( const CTakeDamageInfo &info );
 
 	// INextBot

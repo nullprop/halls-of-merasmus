@@ -171,9 +171,9 @@ void CTFMeleeMob::Spawn( void )
 
 
 //-----------------------------------------------------------------------------------------------------
-int CTFMeleeMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
+int CTFMeleeMob::OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo )
 {
-	if ( info.GetAttacker() && info.GetAttacker()->GetTeamNumber() == GetTeamNumber() )
+	if ( !rawInfo.GetAttacker() || rawInfo.GetAttacker()->GetTeamNumber() == GetTeamNumber() )
 		return 0;
 
 	if ( !IsPlayingGesture( ACT_MP_GESTURE_FLINCH_CHEST ) )
@@ -191,7 +191,48 @@ int CTFMeleeMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 		pszEffectName = GetTeamNumber() == TF_TEAM_RED ? "spell_pumpkin_mirv_goop_red" : "spell_pumpkin_mirv_goop_blue";
 	}
 
-	DispatchParticleEffect( pszEffectName, info.GetDamagePosition(), GetAbsAngles() );
+	DispatchParticleEffect( pszEffectName, rawInfo.GetDamagePosition(), GetAbsAngles() );
+
+	CTakeDamageInfo info = rawInfo;
+
+	if ( TFGameRules() )
+	{
+		CTFGameRules::DamageModifyExtras_t outParams;
+		info.SetDamage( TFGameRules()->ApplyOnDamageAliveModifyRules( info, this, outParams ) );
+	}
+
+	// fire event for client combat text, beep, etc.
+	IGameEvent *event = gameeventmanager->CreateEvent( "npc_hurt" );
+	if ( event )
+	{
+		event->SetInt( "entindex", entindex() );
+		event->SetInt( "health", MAX( 0, GetHealth() ) );
+		event->SetInt( "damageamount", info.GetDamage() );
+		event->SetBool( "crit", ( info.GetDamageType() & DMG_CRITICAL ) ? true : false );
+
+		CTFPlayer *attackerPlayer = ToTFPlayer( info.GetAttacker() );
+		if ( attackerPlayer )
+		{
+			event->SetInt( "attacker_player", attackerPlayer->GetUserID() );
+
+			if ( attackerPlayer->GetActiveTFWeapon() )
+			{
+				event->SetInt( "weaponid", attackerPlayer->GetActiveTFWeapon()->GetWeaponID() );
+			}
+			else
+			{
+				event->SetInt( "weaponid", 0 );
+			}
+		}
+		else
+		{
+			// hurt by world
+			event->SetInt( "attacker_player", 0 );
+			event->SetInt( "weaponid", 0 );
+		}
+
+		gameeventmanager->FireEvent( event );
+	}
 
 	return BaseClass::OnTakeDamage_Alive( info );
 }
