@@ -19,6 +19,11 @@
 
 ConVar tf_max_active_flying_mobs( "tf_max_active_flying_mobs", "8", FCVAR_CHEAT );
 
+ConVar tf_flying_mob_speed( "tf_flying_mob_speed", "150", FCVAR_CHEAT );
+ConVar tf_flying_mob_hover_height( "tf_flying_mob_hover_height", "200", FCVAR_CHEAT );
+ConVar tf_flying_mob_acceleration( "tf_flying_mob_acceleration", "300", FCVAR_CHEAT );
+ConVar tf_flying_mob_horiz_damping( "tf_flying_mob_horiz_damping", "2", FCVAR_CHEAT );
+ConVar tf_flying_mob_vert_damping( "tf_flying_mob_vert_damping", "1", FCVAR_CHEAT );
 
 //-----------------------------------------------------------------------------------------------------
 // NPC FlyingMob versions of the players
@@ -26,7 +31,9 @@ ConVar tf_max_active_flying_mobs( "tf_max_active_flying_mobs", "8", FCVAR_CHEAT 
 LINK_ENTITY_TO_CLASS( tf_flying_mob, CTFFlyingMob );
 
 IMPLEMENT_SERVERCLASS_ST( CTFFlyingMob, DT_TFFlyingMob )
-	//SendPropFloat( SENDINFO( m_flHeadScale ) ),
+	SendPropExclude( "DT_BaseEntity", "m_angRotation" ),	// client has its own orientation logic
+	SendPropExclude( "DT_BaseEntity", "m_angAbsRotation" ),	// client has its own orientation logic
+	SendPropVector( SENDINFO( m_lookAtSpot ), 0, SPROP_COORD ),
 END_SEND_TABLE()
 
 IMPLEMENT_AUTO_LIST( ITFFlyingMobAutoList );
@@ -42,8 +49,12 @@ CTFFlyingMob::CTFFlyingMob()
 	m_intention = new CTFFlyingMobIntention( this );
 	m_locomotor = new CTFFlyingMobLocomotion( this );
 	m_body = new CTFFlyingMobBody( this );
+	m_vision = new CTFFlyingMobVision( this );
 
 	m_nType = MobType_t::FLYING_NORMAL;
+
+	m_eyeOffset = vec3_origin;
+	m_lookAtSpot = vec3_origin;
 
 	m_flAttackRange = 800.f;
 	m_flAttackDamage = 30.f;
@@ -55,6 +66,9 @@ CTFFlyingMob::CTFFlyingMob()
 //-----------------------------------------------------------------------------------------------------
 CTFFlyingMob::~CTFFlyingMob()
 {
+	if ( m_vision )
+		delete m_vision;
+
 	if ( m_intention )
 		delete m_intention;
 
@@ -74,6 +88,8 @@ void CTFFlyingMob::PrecacheFlyingMob()
 	PrecacheScriptSound( "Halloween.EyeballBossLaugh" );
 	PrecacheScriptSound( "Halloween.EyeballBossBigLaugh" );
 	PrecacheScriptSound( "Halloween.EyeballBossDie" );
+	PrecacheScriptSound( "Halloween.EyeballBossBecomeAlert" );
+	
 
 	PrecacheScriptSound( "Halloween.MonoculusBossSpawn" );
 	PrecacheScriptSound( "Halloween.MonoculusBossDeath" );
@@ -129,7 +145,7 @@ void CTFFlyingMob::Spawn( void )
 		SetPoseParameter( angryPoseParameter, 1 );
 	}
 
-	EmitSound( "Halloween.MonoculusBossSpawn" );
+	EmitSound( "Halloween.EyeballBossBecomeAlert" );
 
 	// force kill oldest skeletons in the level (except skeleton king) to keep the number of skeletons under the max active
 	int nForceKill = ITFFlyingMobAutoList::AutoList().Count() - tf_max_active_flying_mobs.GetInt();
@@ -158,8 +174,8 @@ int CTFFlyingMob::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 //-----------------------------------------------------------------------------------------------------
 void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 {
-	EmitSound( "Halloween.MonoculusBossDeath" ); // "Halloween.EyeballBossDie"
-	DispatchParticleEffect( "eyeboss_death", me->GetAbsOrigin(), me->GetAbsAngles() );
+	EmitSound( "Halloween.EyeballBossDie" ); // "Halloween.MonoculusBossDeath"
+	DispatchParticleEffect( "eyeboss_death", GetAbsOrigin(), GetAbsAngles() );
 
 	const Vector spawnOrigin = WorldSpaceCenter();
 	const QAngle spawnAngles = QAngle();
@@ -179,9 +195,9 @@ void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 			cashAmount = 100;
 			ammoAmount = 20;
 			healthAmount = 100;
-			cashClass = "item_mobdrop_cash_small";
-			ammoClass = "item_mobdrop_ammo_small";
-			healthClass = "item_mobdrop_health_small";
+			cashClass = "item_mobdrop_cash_medium";
+			ammoClass = "item_mobdrop_ammo_medium";
+			healthClass = "item_mobdrop_health_medium";
 			break;
 		}
 	}
@@ -249,48 +265,10 @@ void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 		pHealth->DropSingleInstance( vecVelocity, this, 0, 0 );
 	}
 
-	if (info.GetAttacker() && info.GetAttacker()->IsPlayer())
-	{
-		CTFPlayer *pPlayerAttacker = ToTFPlayer(info.GetAttacker());
-		if (pPlayerAttacker)
-		{
-			if (TFGameRules() && TFGameRules()->IsHalloweenScenario(CTFGameRules::HALLOWEEN_SCENARIO_HIGHTOWER))
-			{
-				pPlayerAttacker->AwardAchievement(ACHIEVEMENT_TF_HALLOWEEN_HELLTOWER_SKELETON_GRIND);
-
-				IGameEvent *pEvent = gameeventmanager->CreateEvent("halloween_skeleton_killed");
-				if (pEvent)
-				{
-					pEvent->SetInt("player", pPlayerAttacker->GetUserID());
-					gameeventmanager->FireEvent(pEvent, true);
-				}
-			}
-		}
-	}
-
 	FireDeathOutput( info.GetInflictor() );
 	
 	BaseClass::Event_Killed( info );
 }
-
-
-//-----------------------------------------------------------------------------------------------------
-void CTFFlyingMob::UpdateOnRemove()
-{
-	CPVSFilter filter( GetAbsOrigin() );
-	UserMessageBegin( filter, "BreakModel" );
-		WRITE_SHORT( GetModelIndex() );
-		WRITE_VEC3COORD( GetAbsOrigin() );
-		WRITE_ANGLES( GetAbsAngles() );
-		WRITE_SHORT( m_nSkin );
-	MessageEnd();
-
-	UTIL_Remove( m_hHat );
-
-	BaseClass::UpdateOnRemove();
-}
-
-
 //-----------------------------------------------------------------------------------------------------
 void CTFFlyingMob::FireDeathOutput( CBaseEntity *pCulprit )
 {
@@ -364,25 +342,13 @@ void CTFFlyingMob::SetMobType( MobType_t nType )
 		case MobType_t::FLYING_NORMAL:
 		default:
 		{
-			m_flHeadScale = 1.f;
-
-			m_flAttackRange = 50.f;
+			m_flAttackRange = 800.f;
 			m_flAttackDamage = 30.f;
-
-			m_flSpecialAttackRange = 500.0f;
-			m_flSpecialAttackDamage = 50.0f;
 
 			SetModel( FLYING_MOB_MODEL );
 			SetModelScale( 1.0f );
-			SetHealth( 50.0f );
-			SetMaxHealth( 50.0f );
-
-			if ( RandomFloat( 0.0f, 1.0f ) < 0.3f )
-			{
-				int iModelIndex = RandomInt( 0, ARRAYSIZE( s_mobHatModels ) - 1 );
-				const char *pszHat = s_mobHatModels[ iModelIndex ];
-				AddHat( pszHat );
-			}
+			SetHealth( 200.0f );
+			SetMaxHealth( 200.0f );
 
 			break;
 		}
@@ -446,7 +412,7 @@ private:
 			{
 			default:
 				{
-					m_laughTimer.Start( RandomFloat( 4.f, 5.f ) );
+					m_laughTimer.Start( RandomFloat( 6.f, 8.f ) );
 				}
 			}
 
@@ -511,41 +477,282 @@ QueryResultType CTFFlyingMobIntention::IsPositionAllowed( const INextBot *meBot,
 }
 
 
-
 //---------------------------------------------------------------------------------------------
 //---------------------------------------------------------------------------------------------
-float CTFFlyingMobLocomotion::GetRunSpeed( void ) const
+CTFFlyingMobLocomotion::CTFFlyingMobLocomotion( INextBot *bot ) : ILocomotion( bot )
 {
-	return 350.0f;
+	Reset();
 }
 
 
 //---------------------------------------------------------------------------------------------
-// if delta Z is greater than this, we have to jump to get up
-float CTFFlyingMobLocomotion::GetStepHeight( void ) const
+CTFFlyingMobLocomotion::~CTFFlyingMobLocomotion()
 {
-	return 18.0f;
 }
 
 
 //---------------------------------------------------------------------------------------------
-// return maximum height of a jump
-float CTFFlyingMobLocomotion::GetMaxJumpHeight( void ) const
+// (EXTEND) reset to initial state
+void CTFFlyingMobLocomotion::Reset( void )
 {
-	return 72.0f;
+	m_velocity = vec3_origin;
+	m_acceleration = vec3_origin;
+	m_desiredSpeed = 0.0f;
+	m_currentSpeed = 0.0f;
+	m_forward = vec3_origin;
+	m_desiredAltitude = tf_flying_mob_hover_height.GetFloat();
+}
+
+//---------------------------------------------------------------------------------------------
+void CTFFlyingMobLocomotion::MaintainAltitude( void )
+{
+	CBaseCombatCharacter *me = GetBot()->GetEntity();
+
+	if ( !me->IsAlive() )
+	{
+		m_acceleration.x = 0.0f;
+		m_acceleration.y = 0.0f;
+		m_acceleration.z = -300.0f;
+
+		return;
+	}
+
+	trace_t result;
+	CTraceFilterSimpleClassnameList filter( me, COLLISION_GROUP_NONE );
+	filter.AddClassnameToIgnore( "eyeball_boss" );
+
+	// find ceiling
+	TraceHull( me->GetAbsOrigin(), me->GetAbsOrigin() + Vector( 0, 0, 1000.0f ), 
+			   me->WorldAlignMins(), me->WorldAlignMaxs(), 
+			   GetBot()->GetBodyInterface()->GetSolidMask(), &filter, &result );
+
+	float ceiling = result.endpos.z - me->GetAbsOrigin().z;
+
+	Vector aheadXY;
+	
+	if ( IsAttemptingToMove() )
+	{
+		aheadXY.x = m_forward.x;
+		aheadXY.y = m_forward.y;
+		aheadXY.z = 0.0f;
+		aheadXY.NormalizeInPlace();
+	}
+	else
+	{
+		aheadXY = vec3_origin;
+	}
+
+	TraceHull( me->GetAbsOrigin() + Vector( 0, 0, ceiling ) + aheadXY * 50.0f,
+			   me->GetAbsOrigin() + Vector( 0, 0, -2000.0f ) + aheadXY * 50.0f,
+			   Vector( 1.25f * me->WorldAlignMins().x, 1.25f * me->WorldAlignMins().y, me->WorldAlignMins().z ), 
+			   Vector( 1.25f * me->WorldAlignMaxs().x, 1.25f * me->WorldAlignMaxs().y, me->WorldAlignMaxs().z ), 
+			   GetBot()->GetBodyInterface()->GetSolidMask(), &filter, &result );
+
+	float groundZ = result.endpos.z;
+
+	float currentAltitude = me->GetAbsOrigin().z - groundZ;
+
+	float desiredAltitude = GetDesiredAltitude();
+
+	float error = desiredAltitude - currentAltitude;
+
+	float accelZ = clamp( error, -tf_flying_mob_acceleration.GetFloat(), tf_flying_mob_acceleration.GetFloat() );
+
+	m_acceleration.z += accelZ;
+}
+
+//---------------------------------------------------------------------------------------------
+// (EXTEND) update internal state
+void CTFFlyingMobLocomotion::Update( void )
+{
+	CBaseCombatCharacter *me = GetBot()->GetEntity();
+	const float deltaT = GetUpdateInterval();
+
+	Vector pos = me->GetAbsOrigin();
+
+	// always maintain altitude, even if not trying to move (ie: no Approach call)
+	MaintainAltitude();
+
+	m_forward = m_velocity;
+	m_currentSpeed = m_forward.NormalizeInPlace();
+
+	Vector damping( tf_flying_mob_horiz_damping.GetFloat(), tf_flying_mob_horiz_damping.GetFloat(), tf_flying_mob_vert_damping.GetFloat() );
+	Vector totalAccel = m_acceleration - m_velocity * damping;
+
+	m_velocity += totalAccel * deltaT;
+	me->SetAbsVelocity( m_velocity );
+
+	pos += m_velocity * deltaT;
+
+	// check for collisions along move	
+	trace_t result;
+	CTraceFilterSkipClassname filter( me, "tf_flying_mob", COLLISION_GROUP_NONE );
+	Vector from = me->GetAbsOrigin();
+	Vector to = pos;
+	Vector desiredGoal = to;
+	Vector resolvedGoal;
+	int recursionLimit = 3;
+
+	int hitCount = 0;
+	Vector surfaceNormal = vec3_origin;
+
+	bool didHitWorld = false;
+
+	while( true )
+	{
+		TraceHull( from, desiredGoal, me->WorldAlignMins(), me->WorldAlignMaxs(), GetBot()->GetBodyInterface()->GetSolidMask(), &filter, &result );
+
+		if ( !result.DidHit() )
+		{
+			resolvedGoal = pos;
+			break;
+		}
+
+		if ( result.DidHitWorld() )
+		{
+			didHitWorld = true;
+		}
+
+		++hitCount;
+		surfaceNormal += result.plane.normal;
+
+		// If we hit really close to our target, then stop
+		if ( !result.startsolid && desiredGoal.DistToSqr( result.endpos ) < 1.0f )
+		{
+			resolvedGoal = result.endpos;
+			break;
+		}
+
+		if ( result.startsolid )
+		{
+			// stuck inside solid; don't move
+			resolvedGoal = me->GetAbsOrigin();
+			break;
+		}
+
+		if ( --recursionLimit <= 0 )
+		{
+			// reached recursion limit, no more adjusting allowed
+			resolvedGoal = result.endpos;
+			break;
+		}
+
+		// slide off of surface we hit
+		Vector fullMove = desiredGoal - from;
+		Vector leftToMove = fullMove * ( 1.0f - result.fraction );
+
+		float blocked = DotProduct( result.plane.normal, leftToMove );
+
+		Vector unconstrained = fullMove - blocked * result.plane.normal;
+
+		// check for collisions along remainder of move
+		// But don't bother if we're not going to deflect much
+		Vector remainingMove = from + unconstrained;
+		if ( remainingMove.DistToSqr( result.endpos ) < 1.0f )
+		{
+			resolvedGoal = result.endpos;
+			break;
+		}
+
+		desiredGoal = remainingMove;
+	}
+
+	if ( hitCount > 0 )
+	{
+		surfaceNormal.NormalizeInPlace();
+
+		// bounce
+		m_velocity = m_velocity - 2.0f * DotProduct( m_velocity, surfaceNormal ) * surfaceNormal;
+
+		if ( didHitWorld )
+		{
+			//me->EmitSound( "Minion.Bounce" );
+		}
+	}
+
+	GetBot()->GetEntity()->SetAbsOrigin( result.endpos );
+
+	m_acceleration = vec3_origin;
 }
 
 
 //---------------------------------------------------------------------------------------------
-// Return max rate of yaw rotation
-float CTFFlyingMobLocomotion::GetMaxYawRate( void ) const
+// (EXTEND) move directly towards the given position
+void CTFFlyingMobLocomotion::Approach( const Vector &goalPos, float goalWeight )
 {
-	return 200.0f;
+	Vector flyGoal = goalPos;
+	flyGoal.z += m_desiredAltitude;
+
+	Vector toGoal = flyGoal - GetBot()->GetEntity()->GetAbsOrigin();
+	// altitude is handled in Update()
+	toGoal.z = 0.0f;
+	toGoal.NormalizeInPlace();
+
+	m_acceleration += tf_flying_mob_acceleration.GetFloat() * toGoal;
 }
 
 
 //---------------------------------------------------------------------------------------------
-bool CTFFlyingMobLocomotion::ShouldCollideWith( const CBaseEntity *object ) const
+void CTFFlyingMobLocomotion::SetDesiredSpeed( float speed )
 {
-	return false;
+	m_desiredSpeed = speed;
+}
+
+
+//---------------------------------------------------------------------------------------------
+float CTFFlyingMobLocomotion::GetDesiredSpeed( void ) const
+{
+	return m_desiredSpeed;
+}
+
+
+//---------------------------------------------------------------------------------------------
+void CTFFlyingMobLocomotion::SetDesiredAltitude( float height )
+{
+	m_desiredAltitude = height;
+}
+
+
+//---------------------------------------------------------------------------------------------
+float CTFFlyingMobLocomotion::GetDesiredAltitude( void ) const
+{
+	return m_desiredAltitude;
+}
+
+
+//---------------------------------------------------------------------------------------------
+// Face along path. Since we float, only face horizontally.
+void CTFFlyingMobLocomotion::FaceTowards( const Vector &target )
+{
+	CBaseCombatCharacter *me = GetBot()->GetEntity();
+
+	Vector toTarget = target - me->WorldSpaceCenter();
+	toTarget.z = 0.0f;
+
+	QAngle angles;
+	VectorAngles( toTarget, angles );
+
+	me->SetAbsAngles( angles );
+}
+
+
+//---------------------------------------------------------------------------------------------
+// return position of "feet" - the driving point where the bot contacts the ground
+// for this floating boss, "feet" refers to the ground directly underneath him
+const Vector &CTFFlyingMobLocomotion::GetFeet( void ) const
+{
+	static Vector feet;
+	CBaseCombatCharacter *me = GetBot()->GetEntity();
+
+	trace_t result;
+	CTraceFilterSimpleClassnameList filter( me, COLLISION_GROUP_NONE );
+	filter.AddClassnameToIgnore( "tf_flying_mob" );
+
+	feet = me->GetAbsOrigin();
+
+	UTIL_TraceLine( feet, feet + Vector( 0, 0, -2000.0f ), MASK_PLAYERSOLID_BRUSHONLY, &filter, &result );
+
+	feet.z = result.endpos.z;
+
+	return feet;
 }

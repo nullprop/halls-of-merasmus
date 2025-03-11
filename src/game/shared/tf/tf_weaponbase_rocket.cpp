@@ -319,7 +319,8 @@ CTFBaseRocket *CTFBaseRocket::Create( CBaseEntity *pLauncher, const char *pszCla
 	pRocket->SetAbsAngles( angles );
 
 	// Set team.
-	pRocket->ChangeTeam( pOwner->GetTeamNumber() );
+	if ( pOwner )
+		pRocket->ChangeTeam( pOwner->GetTeamNumber() );
 
 	return pRocket;
 }

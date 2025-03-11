@@ -11,7 +11,7 @@
 #include "NextBotGroundLocomotion.h"
 #include "Path/NextBotPathFollow.h"
 #include "tf_melee_mob_body.h"
-#include "tf_mob_common.h"
+#include "player_vs_environment/tf_mob_common.h"
 
 class CTFMeleeMob;
 
@@ -78,8 +78,6 @@ public:
 	virtual CTFMeleeMobIntention	*GetIntentionInterface( void ) const	{ return m_intention; }
 	virtual CTFMeleeMobLocomotion	*GetLocomotionInterface( void ) const	{ return m_locomotor; }
 	virtual CTFMeleeMobBody	*GetBodyInterface( void ) const			{ return m_body; }
-
-	CBaseAnimating *m_zombieParts;
 
 	void StartLifeTimer( float flLifeTime ) { m_lifeTimer.Start( flLifeTime ); }
 	bool ShouldSuicide() const;

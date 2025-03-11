@@ -10,114 +10,63 @@
 #include "tf_flying_mob_body.h"
 
 
-//-------------------------------------------------------------------------------------------
-CTFFlyingMobBody::CTFFlyingMobBody( INextBot *bot ) : IBody( bot )
+CTFFlyingMobBody::CTFFlyingMobBody( INextBot *bot ) : CBotNPCBody( bot ) 
 {
-	m_moveXPoseParameter = -1;
-	m_moveYPoseParameter = -1;
-	m_currentActivity = -1;
+	m_leftRightPoseParameter = -1;
+	m_upDownPoseParameter = -1;
+	m_lookAtSpot = vec3_origin;
 }
 
 
-//-------------------------------------------------------------------------------------------
-bool CTFFlyingMobBody::StartActivity( Activity act, unsigned int flags )
-{
-	CTFFlyingMob *me = (CTFFlyingMob *)GetBot()->GetEntity();
-
-	int animSequence = ::SelectWeightedSequence( me->GetModelPtr(), act, me->GetSequence() );
-
-	if ( animSequence )
-	{
-		m_currentActivity = act;
-		me->SetSequence( animSequence );
-		me->SetPlaybackRate( 1.0f );
-		me->SetCycle( 0 );
-		me->ResetSequenceInfo();
-
-		return true;
-	}
-
-	return false;
-}
-
-
-//-------------------------------------------------------------------------------------------
+//---------------------------------------------------------------------------------------------
 void CTFFlyingMobBody::Update( void )
 {
-	CTFFlyingMob *me = (CTFFlyingMob *)GetBot()->GetEntity();
+	CBaseCombatCharacter *me = GetBot()->GetEntity();
 
-	if ( m_moveXPoseParameter < 0 )
-	{
-		m_moveXPoseParameter = me->LookupPoseParameter( "move_x" );
-	}
+	// track client-side rotation
+	Vector myForward;
+	me->GetVectors( &myForward, NULL, NULL );
 
-	if ( m_moveYPoseParameter < 0 )
-	{
-		m_moveYPoseParameter = me->LookupPoseParameter( "move_y" );
-	}
+	const float myApproachRate = 3.0f; // 1.0f;
 
+	Vector toTarget = m_lookAtSpot - me->WorldSpaceCenter();
+	toTarget.NormalizeInPlace();
 
-	// Update the pose parameters
-	float speed = me->GetLocomotionInterface()->GetGroundSpeed(); // me->GetAbsVelocity().Length();
+	myForward += toTarget * myApproachRate * GetUpdateInterval();
+	myForward.NormalizeInPlace();
 
-	if ( speed < 0.01f )
-	{
-		// stopped
-		if ( m_moveXPoseParameter >= 0 )
-		{
-			me->SetPoseParameter( m_moveXPoseParameter, 0.0f );
-		}
+	QAngle myNewAngles;
+	VectorAngles( myForward, myNewAngles );
 
-		if ( m_moveYPoseParameter >= 0 )
-		{
-			me->SetPoseParameter( m_moveYPoseParameter, 0.0f );
-		}
-	}
-	else
-	{
-		Vector forward, right, up;
-		me->GetVectors( &forward, &right, &up );
-
-		const Vector &motionVector = me->GetLocomotionInterface()->GetGroundMotionVector();
-
-		// move_x == 1.0 at full forward motion and -1.0 in full reverse
-		if ( m_moveXPoseParameter >= 0 )
-		{
-			float forwardVel = DotProduct( motionVector, forward );
-
-			me->SetPoseParameter( m_moveXPoseParameter, forwardVel );
-		}
-
-		if ( m_moveYPoseParameter >= 0 )
-		{
-			float sideVel = DotProduct( motionVector, right );
-
-			me->SetPoseParameter( m_moveYPoseParameter, sideVel );
-		}
-	}
-
-	// adjust animation speed to actual movement speed
-	if ( me->m_flGroundSpeed > 0.0f )
-	{
-		// Clamp playback rate to avoid datatable warnings.  Anything faster would look silly, anyway.
-		float playbackRate = clamp( speed / me->m_flGroundSpeed, -4.f, 12.f );
-		me->SetPlaybackRate( playbackRate );
-	}
-}
-
-void CTFFlyingMobBody::Upkeep( void )
-{
-	CTFFlyingMob *me = (CTFFlyingMob *)GetBot()->GetEntity();
+	me->SetAbsAngles( myNewAngles );
 
 	// move the animation ahead in time	
 	me->StudioFrameAdvance();
 	me->DispatchAnimEvents( me );
-} 
+}
 
 
 //---------------------------------------------------------------------------------------------
-// return the bot's collision mask (hack until we get a general hull trace abstraction here or in the locomotion interface)
-unsigned int CTFFlyingMobBody::GetSolidMask( void ) const
+// Aim the bot's head towards the given goal
+void CTFFlyingMobBody::AimHeadTowards( const Vector &lookAtPos, LookAtPriorityType priority, float duration, INextBotReply *replyWhenAimed, const char *reason )
 {
-	return MASK_NPCSOLID | CONTENTS_PLAYERCLIP;
+	CTFFlyingMob *me = (CTFFlyingMob *)GetBot()->GetEntity();
+
+	m_lookAtSpot = lookAtPos;
+	me->SetLookAtTarget( lookAtPos );
+}
+
+
+//---------------------------------------------------------------------------------------------
+// Continually aim the bot's head towards the given subject
+void CTFFlyingMobBody::AimHeadTowards( CBaseEntity *subject, LookAtPriorityType priority, float duration, INextBotReply *replyWhenAimed, const char *reason )
+{
+	CTFFlyingMob *me = (CTFFlyingMob *)GetBot()->GetEntity();
+
+	me->SetLookAtTarget( subject->EyePosition() );
+
+	if ( !subject )
+		return;
+
+	m_lookAtSpot = subject->EyePosition();
 }

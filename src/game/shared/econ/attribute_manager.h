@@ -115,7 +115,7 @@ public:
 			return TValue;
 
 		IHasAttributes *pAttribInterface = GetAttribInterface( (CBaseEntity*) pEntity );
-		AssertMsg( pAttribInterface, "If you hit this, you've probably got a hook incorrectly setup, because the entity it's hooking on doesn't know about attributes." );
+		//AssertMsg( pAttribInterface, "If you hit this, you've probably got a hook incorrectly setup, because the entity it's hooking on doesn't know about attributes." );
 		if ( pAttribInterface == NULL )
 			return TValue;
 

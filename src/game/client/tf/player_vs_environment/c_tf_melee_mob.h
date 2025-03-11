@@ -4,6 +4,7 @@
 
 #include "c_ai_basenpc.h"
 #include "props_shared.h"
+#include "player_vs_environment/tf_mob_common.h"
 
 //--------------------------------------------------------------------------------------------------------
 /**

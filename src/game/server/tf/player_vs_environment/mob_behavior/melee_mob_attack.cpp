@@ -17,9 +17,6 @@
 
 #define MELEE_MOB_CHASE_MIN_DURATION 3.0f
 
-ConVar tf_melee_mob_damage( "tf_melee_mob_damage", "10", FCVAR_CHEAT, "How much damage a zombie melee hit does." );
-
-
 //----------------------------------------------------------------------------------
 ActionResult< CTFMeleeMob >	CTFMeleeMobAttack::OnStart( CTFMeleeMob *me, Action< CTFMeleeMob > *priorAction )
 {
@@ -85,6 +82,7 @@ void CTFMeleeMobAttack::SelectVictim( CTFMeleeMob *me )
 	CUtlVector< CTFPlayer * > playerVector;
 
 	// collect everyone
+	/*
 	if ( me->GetTeamNumber() == TF_TEAM_RED )
 	{
 		CollectPlayers( &playerVector, TF_TEAM_BLUE, COLLECT_ONLY_LIVING_PLAYERS );
@@ -94,6 +92,7 @@ void CTFMeleeMobAttack::SelectVictim( CTFMeleeMob *me )
 		CollectPlayers( &playerVector, TF_TEAM_RED, COLLECT_ONLY_LIVING_PLAYERS );
 	}
 	else
+	*/
 	{
 		CollectPlayers( &playerVector, TF_TEAM_RED, COLLECT_ONLY_LIVING_PLAYERS );
 		CollectPlayers( &playerVector, TF_TEAM_BLUE, COLLECT_ONLY_LIVING_PLAYERS, APPEND_PLAYERS );
@@ -122,11 +121,13 @@ void CTFMeleeMobAttack::SelectVictim( CTFMeleeMob *me )
 			}
 		}
 
+		/*
 		// ignore player who disguises as my team
 		if ( pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pPlayer->m_Shared.GetDisguiseTeam() == me->GetTeamNumber() )
 		{
 			continue;
 		}
+		*/
 
 		// ignore ghost players
 		if ( pPlayer->m_Shared.InCond( TF_COND_HALLOWEEN_GHOST_MODE ) )
@@ -143,6 +144,7 @@ void CTFMeleeMobAttack::SelectVictim( CTFMeleeMob *me )
 	}
 
 	// find closest zombie
+	/*
 	for ( int i=0; i<ITFMeleeMobAutoList::AutoList().Count(); ++i )
 	{
 		CTFMeleeMob* pTFMeleeMob = static_cast< CTFMeleeMob* >( ITFMeleeMobAutoList::AutoList()[i] );
@@ -163,6 +165,7 @@ void CTFMeleeMobAttack::SelectVictim( CTFMeleeMob *me )
 			victimRangeSq = rangeSq;
 		}
 	}
+	*/
 
 	if ( newVictim )
 	{

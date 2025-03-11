@@ -3516,6 +3516,9 @@ void CTFGameRules::Precache( void )
 	}
 
 	CTFPlayer::m_bTFPlayerNeedsPrecache = true;
+
+	CTFMeleeMob::PrecacheMeleeMob();
+	CTFFlyingMob::PrecacheFlyingMob()
 }
 #endif
 

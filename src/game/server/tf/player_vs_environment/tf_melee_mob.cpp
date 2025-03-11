@@ -300,25 +300,6 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 		pHealth->DropSingleInstance( vecVelocity, this, 0, 0 );
 	}
 
-	if (info.GetAttacker() && info.GetAttacker()->IsPlayer())
-	{
-		CTFPlayer *pPlayerAttacker = ToTFPlayer(info.GetAttacker());
-		if (pPlayerAttacker)
-		{
-			if (TFGameRules() && TFGameRules()->IsHalloweenScenario(CTFGameRules::HALLOWEEN_SCENARIO_HIGHTOWER))
-			{
-				pPlayerAttacker->AwardAchievement(ACHIEVEMENT_TF_HALLOWEEN_HELLTOWER_SKELETON_GRIND);
-
-				IGameEvent *pEvent = gameeventmanager->CreateEvent("halloween_skeleton_killed");
-				if (pEvent)
-				{
-					pEvent->SetInt("player", pPlayerAttacker->GetUserID());
-					gameeventmanager->FireEvent(pEvent, true);
-				}
-			}
-		}
-	}
-
 	FireDeathOutput( info.GetInflictor() );
 	
 	BaseClass::Event_Killed( info );

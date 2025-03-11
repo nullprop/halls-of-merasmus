@@ -5,6 +5,7 @@
 #define TF_MOB_GENERATOR_H
 
 #include "player_vs_environment/tf_melee_mob.h"
+#include "player_vs_environment/tf_flying_mob.h"
 
 class CTFMobGenerator : public CPointEntity
 {
@@ -27,7 +28,7 @@ public:
 	void InputRemoveBots( inputdata_t &inputdata );
 
 	// Output
-	void OnBotKilled( CTFMeleeMob *pBot );
+	void OnBotKilled( NextBotCombatCharacter *pBot );
 
 private:
 	int m_spawnCount;
@@ -43,7 +44,7 @@ private:
 	COutputEvent m_onExpended;
 	COutputEvent m_onBotKilled;
 
-	CUtlVector< CHandle< CTFMeleeMob > > m_spawnedBotVector;
+	CUtlVector< CHandle< NextBotCombatCharacter > > m_spawnedBotVector;
 };
 
 #endif // TF_MOB_GENERATOR_H

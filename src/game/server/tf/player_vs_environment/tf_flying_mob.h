@@ -3,37 +3,106 @@
 //
 //
 //=============================================================================
-#ifndef TF_GROUND_MOB_H
-#define TF_GROUND_MOB_H
+#ifndef TF_FLYING_MOB_H
+#define TF_FLYING_MOB_H
 
 #include "NextBot.h"
 #include "NextBotBehavior.h"
 #include "NextBotGroundLocomotion.h"
 #include "Path/NextBotPathFollow.h"
 #include "tf_flying_mob_body.h"
-#include "tf_mob_common.h"
+#include "player_vs_environment/tf_mob_common.h"
 
 class CTFFlyingMob;
 
 
-//----------------------------------------------------------------------------
-class CTFFlyingMobLocomotion : public CNextBotFlyingLocomotion
+class CTFFlyingMobVision : public IVision
 {
 public:
-	CTFFlyingMobLocomotion( INextBot *bot ) : CNextBotFlyingLocomotion( bot ) { }
-	virtual ~CTFFlyingMobLocomotion() { }
+	CTFFlyingMobVision( INextBot *bot ) : IVision( bot ) { }
+	virtual ~CTFFlyingMobVision() { }
+
+	virtual void Reset( void )	{ }
+	virtual void Update( void ) { }
+};
+
+//----------------------------------------------------------------------------
+class CTFFlyingMobLocomotion : public ILocomotion
+{
+public:
+	CTFFlyingMobLocomotion( INextBot *bot );
+	virtual ~CTFFlyingMobLocomotion();
+
+	virtual void Reset( void );								// (EXTEND) reset to initial state
+	virtual void Update( void );							// (EXTEND) update internal state
+
+	virtual void Approach( const Vector &goalPos, float goalWeight = 1.0f );	// (EXTEND) move directly towards the given position
 
 	virtual void SetDesiredSpeed( float speed );			// set desired speed for locomotor movement
 	virtual float GetDesiredSpeed( void ) const;			// returns the current desired speed
 
+	virtual float GetStepHeight( void ) const;				// if delta Z is greater than this, we have to jump to get up
+	virtual float GetMaxJumpHeight( void ) const;			// return maximum height of a jump
+	virtual float GetDeathDropHeight( void ) const;			// distance at which we will die if we fall
+
 	virtual void SetDesiredAltitude( float height );		// how high above our Approach goal do we float?
 	virtual float GetDesiredAltitude( void ) const;
 
-	virtual bool ShouldCollideWith( const CBaseEntity *object ) const;
+	virtual const Vector &GetGroundNormal( void ) const;	// surface normal of the ground we are in contact with
 
-private:
-	virtual float GetMaxYawRate( void ) const;				// return max rate of yaw rotation
+	virtual const Vector &GetVelocity( void ) const;		// return current world space velocity
+	void SetVelocity( const Vector &velocity );
+
+	virtual void FaceTowards( const Vector &target );		// rotate body to face towards "target"
+
+	// return position of "feet" - the driving point where the bot contacts the ground
+	// for this floating boss, "feet" refers to the ground directly underneath him
+	virtual const Vector &GetFeet( void ) const;			
+
+protected:
+	float m_desiredSpeed;
+	float m_currentSpeed;
+	Vector m_forward;
+
+	float m_desiredAltitude;
+	void MaintainAltitude( void );
+
+	Vector m_velocity;
+	Vector m_acceleration;
 };
+
+
+inline float CTFFlyingMobLocomotion::GetStepHeight( void ) const
+{
+	return 50.0f;
+}
+
+inline float CTFFlyingMobLocomotion::GetMaxJumpHeight( void ) const
+{
+	return 100.0f;
+}
+
+inline float CTFFlyingMobLocomotion::GetDeathDropHeight( void ) const
+{
+	return 999.9f;
+}
+
+inline const Vector &CTFFlyingMobLocomotion::GetGroundNormal( void ) const
+{
+	static Vector up( 0, 0, 1.0f );
+
+	return up;
+}
+
+inline const Vector &CTFFlyingMobLocomotion::GetVelocity( void ) const
+{
+	return m_velocity;
+}
+
+inline void CTFFlyingMobLocomotion::SetVelocity( const Vector &velocity )
+{
+	m_velocity = velocity;
+}
 
 
 //----------------------------------------------------------------------------
@@ -55,7 +124,6 @@ private:
 	Behavior< CTFFlyingMob > *m_behavior;
 };
 
-
 //----------------------------------------------------------------------------
 DECLARE_AUTO_LIST( ITFFlyingMobAutoList );
 
@@ -74,14 +142,14 @@ public:
 	virtual void Spawn( void );
 	virtual int OnTakeDamage_Alive( const CTakeDamageInfo &info );
 	virtual void Event_Killed( const CTakeDamageInfo &info );
-	virtual void UpdateOnRemove();
 
 	// INextBot
 	virtual CTFFlyingMobIntention	*GetIntentionInterface( void ) const	{ return m_intention; }
 	virtual CTFFlyingMobLocomotion	*GetLocomotionInterface( void ) const	{ return m_locomotor; }
 	virtual CTFFlyingMobBody	*GetBodyInterface( void ) const			{ return m_body; }
 
-	CBaseAnimating *m_zombieParts;
+	virtual Vector EyePosition( void );
+	virtual void SetLookAtTarget( const Vector &spot );
 
 	void StartLifeTimer( float flLifeTime ) { m_lifeTimer.Start( flLifeTime ); }
 	bool ShouldSuicide() const;
@@ -95,30 +163,22 @@ public:
 
 	float GetAttackRange() const { return m_flAttackRange; }
 	float GetAttackDamage() const { return m_flAttackDamage; }
-	float GetSpecialAttackRange() const { return m_flSpecialAttackRange; }
-	float GetSpecialAttackDamage() const { return m_flSpecialAttackDamage; }
 
 	void FireDeathOutput( CBaseEntity *pCulprit );
 private:
 	CTFFlyingMobIntention *m_intention;
 	CTFFlyingMobLocomotion *m_locomotor;
 	CTFFlyingMobBody *m_body;
+	CTFFlyingMobVision *m_vision;
 
 	MobType_t m_nType;
-	CNetworkVar( float, m_flHeadScale );
 
-	CHandle< CBaseAnimating > m_hHat;
+	Vector m_eyeOffset;
 
-	struct RecentDamager_t
-	{
-		EHANDLE m_hEnt;
-		float m_flDamageTime;
-	};
+	CNetworkVector( m_lookAtSpot );
 
 	float m_flAttackRange;
 	float m_flAttackDamage;
-	float m_flSpecialAttackRange;
-	float m_flSpecialAttackDamage;
 
 	bool m_bForceSuicide;
 	CountdownTimer m_lifeTimer;
@@ -127,82 +187,14 @@ private:
 	COutputEvent m_OnDeath;
 };
 
-
-
-//--------------------------------------------------------------------------------------------------------------
-class CTFFlyingMobPathCost : public IPathCost
+inline Vector CTFFlyingMob::EyePosition( void )
 {
-public:
-	CTFFlyingMobPathCost( CTFFlyingMob *me )
-	{
-		m_me = me;
-	}
+	return GetAbsOrigin() + m_eyeOffset;
+}
 
-	// return the cost (weighted distance between) of moving from "fromArea" to "area", or -1 if the move is not allowed
-	virtual float operator()( CNavArea *area, CNavArea *fromArea, const CNavLadder *ladder, const CFuncElevator *elevator, float length ) const
-	{
-		if ( fromArea == NULL )
-		{
-			// first area in path, no cost
-			return 0.0f;
-		}
-		else
-		{
-			if ( !m_me->GetLocomotionInterface()->IsAreaTraversable( area ) )
-			{
-				// our locomotor says we can't move here
-				return -1.0f;
-			}
+inline void CTFFlyingMob::SetLookAtTarget( const Vector &spot )
+{
+	m_lookAtSpot = spot;
+}
 
-			// compute distance traveled along path so far
-			float dist;
-
-			if ( ladder )
-			{
-				dist = ladder->m_length;
-			}
-			else if ( length > 0.0 )
-			{
-				// optimization to avoid recomputing length
-				dist = length;
-			}
-			else
-			{
-				dist = ( area->GetCenter() - fromArea->GetCenter() ).Length();
-			}
-
-			// check height change
-			float deltaZ = fromArea->ComputeAdjacentConnectionHeightChange( area );
-			if ( deltaZ >= m_me->GetLocomotionInterface()->GetStepHeight() )
-			{
-				if ( deltaZ >= m_me->GetLocomotionInterface()->GetMaxJumpHeight() )
-				{
-					// too high to reach
-					return -1.0f;
-				}
-
-				// jumping is slower than flat ground
-				const float jumpPenalty = 5.0f;
-				dist += jumpPenalty * dist;
-			}
-			else if ( deltaZ < -m_me->GetLocomotionInterface()->GetDeathDropHeight() )
-			{
-				// too far to drop
-				return -1.0f;
-			}
-
-			// this term causes the same bot to choose different routes over time,
-			// but keep the same route for a period in case of repaths
-			int timeMod = (int)( gpGlobals->curtime / 10.0f ) + 1;
-			float preference = 1.0f + 50.0f * ( 1.0f + FastCos( (float)( m_me->GetEntity()->entindex() * area->GetID() * timeMod ) ) );
-			float cost = dist * preference;
-
-			return cost + fromArea->GetCostSoFar();
-		}
-	}
-
-	CTFFlyingMob *m_me;
-};
-
-
-#endif // TF_GROUND_MOB_H
+#endif // TF_FLYING_MOB_H

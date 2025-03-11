@@ -9,6 +9,35 @@
 
 extern ConVar tf_max_active_mobs;
 
+void CreateMob( const CCommand &args )
+{
+	CBasePlayer *pPlayer = UTIL_PlayerByIndex( 1 );
+	
+	if ( !pPlayer )
+		return;
+
+	Vector vForward;
+	AngleVectors( pPlayer->EyeAngles(), &vForward );
+	const Vector vStart = pPlayer->EyePosition();
+	const Vector vEnd = vStart + vForward * 1000.0f;
+
+	trace_t trace;
+	UTIL_TraceLine( vStart, vEnd, MASK_SOLID, pPlayer, COLLISION_GROUP_NONE, &trace );
+
+	MobType_t mobType = MobType_t( ( args.ArgC() > 1 ) ? atoi(args[1]) : 0 );
+
+	if (mobType < MobType_t::FLYING_NORMAL)
+	{
+		CTFMeleeMob::SpawnAtPos( trace.endpos, vec3_origin, NULL, mobType, 0.0f, TF_TEAM_HALLOWEEN );
+	}
+	else
+	{
+		CTFFlyingMob::SpawnAtPos( trace.endpos, vec3_origin, NULL, mobType, 0.0f, TF_TEAM_HALLOWEEN );
+	}
+}
+
+ConCommand cc_create_mob( "create_mob", CreateMob, 0, FCVAR_CHEAT );
+
 //------------------------------------------------------------------------------
 
 BEGIN_DATADESC( CTFMobGenerator )
@@ -92,7 +121,7 @@ void CTFMobGenerator::InputRemoveBots( inputdata_t &inputdata )
 {
 	for( int i = m_spawnedBotVector.Count() - 1; i >= 0 ; i-- )
 	{
-		CTFMeleeMob *pBot = m_spawnedBotVector[i];
+		NextBotCombatCharacter *pBot = m_spawnedBotVector[i];
 		if ( pBot )
 		{
 			UTIL_Remove(pBot);
@@ -103,7 +132,7 @@ void CTFMobGenerator::InputRemoveBots( inputdata_t &inputdata )
 }
 
 //------------------------------------------------------------------------------
-void CTFMobGenerator::OnBotKilled( CTFMeleeMob *pBot )
+void CTFMobGenerator::OnBotKilled( NextBotCombatCharacter *pBot )
 {
 	m_onBotKilled.FireOutput( pBot, this );
 }
@@ -139,7 +168,7 @@ void CTFMobGenerator::SpawnBot( void )
 	// Clear dead mobs
 	for ( int i = m_spawnedBotVector.Count() - 1; i >= 0; i-- )
 	{
-		CHandle< CTFMeleeMob > hBot = m_spawnedBotVector[i];
+		CHandle< NextBotCombatCharacter > hBot = m_spawnedBotVector[i];
 		if ( hBot == NULL )
 		{
 			m_spawnedBotVector.FastRemove(i);
@@ -153,29 +182,41 @@ void CTFMobGenerator::SpawnBot( void )
 		return;
 	}
 
-	// Spawned too many globally?
-	// Probaly don't want this check so old mobs in a different area
-	// don't stop new ones from spawning near players.
-	// Mob spawn code kills the oldest.
-	/*
-	if ( ITFMeleeMobAutoList::AutoList().Count() >= tf_max_active_mobs )
-	{
-		SetNextThink( gpGlobals->curtime + 0.1f );
-		return;
-	}
-	*/
-
 	Vector vForward;
 	AngleVectors( GetAbsAngles(), &vForward );
 
-	CTFMeleeMob *pMob = CTFMeleeMob::SpawnAtPos(
-		GetAbsOrigin(),
-		GetAbsOrigin() + vForward,
-		NULL,
-		m_mobType,
-		0.0f,
-		TF_TEAM_HALLOWEEN
-	);
+	NextBotCombatCharacter *pMob = NULL;
+	
+	switch (m_mobType)
+	{
+		default:
+		case MobType_t::MELEE_NORMAL:
+		case MobType_t::MELEE_GIANT:
+		{
+			pMob = 	CTFMeleeMob::SpawnAtPos(
+				GetAbsOrigin(),
+				GetAbsOrigin() + vForward,
+				NULL,
+				m_mobType,
+				0.0f,
+				TF_TEAM_HALLOWEEN
+			);
+			break;
+		}
+
+		case MobType_t::FLYING_NORMAL:
+		{
+			pMob = 	CTFFlyingMob::SpawnAtPos(
+				GetAbsOrigin(),
+				GetAbsOrigin() + vForward,
+				NULL,
+				m_mobType,
+				0.0f,
+				TF_TEAM_HALLOWEEN
+			);
+			break;
+		}
+	}
 
 	if ( pMob )
 	{

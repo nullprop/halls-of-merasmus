@@ -71,6 +71,7 @@ tf2_playerstats.dmx
 viewed.res
 user.scr
 steam_appid.txt
+game/mod_tf/vprof/
 
 # shader files
 *.tmp
