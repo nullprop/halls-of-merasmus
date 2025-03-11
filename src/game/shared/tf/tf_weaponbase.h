@@ -316,7 +316,6 @@ class CTFWeaponBase : public CBaseCombatWeapon, public IHasOwner, public IHasGen
 	virtual CBaseEntity	*GetOwnerViaInterface( void ) { return GetOwner(); }
 
 	virtual void Equip( CBaseCombatCharacter *pOwner );
-	virtual void Drop( const Vector &vecVelocity );
 	virtual void UpdateOnRemove( void );
 	virtual bool CanHolster( void ) const;
 	virtual void StartHolsterAnim( void );
@@ -384,7 +383,6 @@ class CTFWeaponBase : public CBaseCombatWeapon, public IHasOwner, public IHasGen
 	bool CanOverload( void ) const;
 	virtual bool CheckReloadMisfire( void ) { return false; }
 
-	virtual bool CanDrop( void ) { return false; }
 	virtual bool AllowTaunts( void ) { return true; }
 
 	// Fire Rate
@@ -544,8 +542,6 @@ class CTFWeaponBase : public CBaseCombatWeapon, public IHasOwner, public IHasGen
 	virtual void	OnBulletFire( int iEnemyPlayersHit );
 	virtual void	OnPlayerKill( CTFPlayer *pVictim, const CTakeDamageInfo &info );
 	virtual float	GetLastHitTime( void ) { return m_flLastHitTime; }
-
-	virtual int		GetDropSkinOverride( void ) { return -1; }
 
 	int				GetKillStreak () const { return m_iKillStreak; }
 	void			SetKillStreak ( int value ) { m_iKillStreak = value; };
@@ -792,8 +788,6 @@ private:
 	CNetworkVar( float, m_flInspectAnimEndTime );
 	CNetworkVar( int, m_nInspectStage );
 	bool m_bInspecting;
-
-	friend class CTFDroppedWeapon;
 
 #ifdef CLIENT_DLL
 	bool m_bInitViewmodelOffset;

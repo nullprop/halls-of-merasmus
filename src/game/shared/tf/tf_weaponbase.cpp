@@ -1089,34 +1089,6 @@ void CTFWeaponBase::RemoveExtraWearables( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CTFWeaponBase::Drop( const Vector &vecVelocity )
-{
-#ifndef CLIENT_DLL
-	if ( m_iAltFireHint )
-	{
-		CBasePlayer *pPlayer = GetPlayerOwner();
-		if ( pPlayer )
-		{
-			pPlayer->StopHintTimer( m_iAltFireHint );
-		}
-	}
-#endif
-
-	BaseClass::Drop( vecVelocity );
-
-	ReapplyProvision();
-
-	RemoveExtraWearables();
-
-#ifndef CLIENT_DLL
-	// Never allow weapons to lie around on the ground
-	UTIL_Remove( this );
-#endif
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void CTFWeaponBase::UpdateOnRemove( void )
 {
 	RemoveExtraWearables();

@@ -33,7 +33,6 @@ class CCaptureZone;
 class CTFReviveMarker;
 class CWaveSpawnPopulator;
 class CTFTauntProp;
-class CTFDroppedWeapon;
 
 extern const float tf_afterburn_max_duration;
 
@@ -213,8 +212,6 @@ public:
 
 	virtual	void		RemoveAllItems( bool removeSuit );
 
-	virtual bool		BumpWeapon( CBaseCombatWeapon *pWeapon );
-	bool				DropCurrentWeapon( void );
 	void				DropFlag( bool bSilent = false );
 	void				DropRune( bool bApplyForce = true, int nTeam = TEAM_ANY );
 	void				TFWeaponRemove( int iWeaponID );
@@ -405,14 +402,6 @@ public:
 	void SpyDeadRingerDeath( const CTakeDamageInfo& info );
 	void FeignDeath( const CTakeDamageInfo& info, bool bDeathnotice );
 	void CreateFeignDeathRagdoll( const CTakeDamageInfo& info, bool bGib, bool bBurning, bool bDisguised );
-
-	// Dropping Ammo
-	bool ShouldDropAmmoPack( void );
-	void DropAmmoPack( const CTakeDamageInfo &info, bool bEmpty, bool bDisguisedWeapon );
-	void DropAmmoPackFromProjectile( CBaseEntity *pProjectile );
-	void DropExtraAmmo( const CTakeDamageInfo& info, bool bFromDeath = false );
-	void DropHealthPack( const CTakeDamageInfo &info, bool bEmpty );
-	void DropCurrencyPack( CurrencyRewards_t nSize = TF_CURRENCY_PACK_SMALL, int nAmount = 0, bool bForceDistribute = false, CBasePlayer* pMoneyMaker = NULL );	// Only pass in an amount when nSize = TF_CURRENCY_PACK_CUSTOM
 	
 	bool CanDisguise( void );
 	bool CanDisguise_OnKill( void );
@@ -1096,10 +1085,6 @@ private:
 	void				PhysObjectSleep();
 	void				PhysObjectWake();
 
-	// Ammo pack.
-	bool CalculateAmmoPackPositionAndAngles( CTFWeaponBase *pWeapon, Vector &vecOrigin, QAngle &vecAngles );
-	void AmmoPackCleanUp( void );
-
 	// State.
 	CPlayerStateInfo	*StateLookupInfo( int nState );
 	void				StateEnter( int nState );
@@ -1443,9 +1428,6 @@ public:
 	void CreateDisguiseWeaponList( CTFPlayer *pDisguiseTarget );
 	void ClearDisguiseWeaponList();
 
-	bool CanPickupDroppedWeapon( const CTFDroppedWeapon *pWeapon );
-	CTFDroppedWeapon* GetDroppedWeaponInRange();
-
 	bool HasCampaignMedal( int iMedal );
 	void SetCampaignMedalActive( int iMedal ){ m_iCampaignMedals |= iMedal; }
 
@@ -1474,10 +1456,6 @@ public:
 	bool IsMaxHealthDraining( void ) { return m_nMaxHealthDrainBucket != 0.0; }
 
 private:
-	bool PickupWeaponFromOther( CTFDroppedWeapon *pDroppedWeapon );
-	bool TryToPickupDroppedWeapon();
-	float m_flSendPickupWeaponMessageTime;
-
 	void ModifyDamageInfo( CTakeDamageInfo *pInfo, const CBaseEntity *pTarget );
 
 	CNetworkHandle( CBaseEntity, m_hGrapplingHookTarget );

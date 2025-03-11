@@ -28,7 +28,6 @@
 #include "VGuiMatSurface/IMatSystemSurface.h"
 #include "renderparm.h"
 
-#include "tf_dropped_weapon.h"
 #include "econ/econ_item_description.h"
 #include "inputsystem/iinputsystem.h"
 
@@ -934,48 +933,7 @@ void CTargetID::UpdateID( void )
 				}
 				else
 				{
-					CTFDroppedWeapon *pDroppedWeapon = dynamic_cast< CTFDroppedWeapon * >( pEnt );
-					if ( pDroppedWeapon )
-					{
-						CEconItemView* pDroppedEconItem = pDroppedWeapon->GetItem();
-						if ( pLocalTFPlayer->GetDroppedWeaponInRange() != NULL )
-						{
-							pszActionIcon = "obj_weapon_pickup";
-							pszActionCommand = "+use_action_slot_item";
-						}
-	
-						if ( FStrEq( pDroppedEconItem->GetStaticData()->GetItemClass(), "tf_weapon_medigun" ) )
-						{
-							wchar_t wszChargeLevel[10];
-							_snwprintf( wszChargeLevel, ARRAYSIZE( wszChargeLevel ) - 1, L"%.0f", pDroppedWeapon->GetChargeLevel() * 100 );
-							wszChargeLevel[ARRAYSIZE( wszChargeLevel ) - 1] = '\0';
-
-							g_pVGuiLocalize->ConstructString_safe( sIDString, L"%s1 (%s2%)", 2, CEconItemLocalizedFullNameGenerator( GLocalizationProvider(), pDroppedEconItem->GetItemDefinition(), pDroppedEconItem->GetItemQuality() ).GetFullName(), wszChargeLevel );
-						}
-						else
-						{
-							g_pVGuiLocalize->ConstructString_safe( sIDString, L"%s1", 1, CEconItemLocalizedFullNameGenerator( GLocalizationProvider(), pDroppedEconItem->GetItemDefinition(), pDroppedEconItem->GetItemQuality() ).GetFullName() );
-						}
-
-						locchar_t wszPlayerName [128];
-						CBasePlayer *pOwner = GetPlayerByAccountID( pDroppedEconItem->GetAccountID() );
-						// Bots will not work here, so don't fill this out.
-						if ( pOwner )
-						{
-							g_pVGuiLocalize->ConvertANSIToUnicode( pOwner->GetPlayerName(), wszPlayerName, sizeof(wszPlayerName) );
-							g_pVGuiLocalize->ConstructString_safe( sDataString, g_pVGuiLocalize->Find( "#TF_WhoDropped" ), 1, wszPlayerName );
-
-							// Get the rarity color
-							vgui::IScheme *pScheme = vgui::scheme()->GetIScheme( GetScheme() );
-							if ( pScheme )
-							{
-								const char* pszColorName = GetItemSchema()->GetRarityColor( pDroppedEconItem->GetItemDefinition()->GetRarity() );
-								pszColorName = pszColorName ? pszColorName : "TanLight";
-								colorName = pScheme->GetColor( pszColorName, Color( 255, 255, 255, 255 ) );
-							}
-						}
-					}
-					else if ( pLocalTFPlayer->InSameTeam( pEnt ) )
+					if ( pLocalTFPlayer->InSameTeam( pEnt ) )
 					{
 						bShowHealth = true;
 						flHealth = pEnt->GetHealth();

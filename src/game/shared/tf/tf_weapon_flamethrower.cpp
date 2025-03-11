@@ -1947,17 +1947,8 @@ bool CTFFlameThrower::DeflectEntity( CBaseEntity *pTarget, CTFPlayer *pOwner, Ve
 	bool bDeflected = BaseClass::DeflectEntity( pTarget, pOwner, vecForward );
 	if ( bDeflected )
 	{
-		int iAirblastTurnProjectileToAmmo = 0;
-		CALL_ATTRIB_HOOK_INT( iAirblastTurnProjectileToAmmo, airblast_turn_projectile_to_ammo );
-		if ( iAirblastTurnProjectileToAmmo )
-		{
-			pOwner->DropAmmoPackFromProjectile( pTarget );
-		}
-		else
-		{
-			pTarget->EmitSound( "Weapon_FlameThrower.AirBurstAttackDeflect" );
-			EconEntity_OnOwnerKillEaterEvent( this, pOwner, pTFPlayerVictim, kKillEaterEvent_ProjectileReflect );
-		}
+		pTarget->EmitSound( "Weapon_FlameThrower.AirBurstAttackDeflect" );
+		EconEntity_OnOwnerKillEaterEvent( this, pOwner, pTFPlayerVictim, kKillEaterEvent_ProjectileReflect );
 	}
 	return bDeflected;
 }

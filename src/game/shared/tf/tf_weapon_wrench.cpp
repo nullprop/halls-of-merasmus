@@ -418,16 +418,6 @@ void CTFRobotArm::Equip( CBaseCombatCharacter* pOwner )
 }
 
 //-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CTFRobotArm::Drop( const Vector &vecVelocity )
-{
-	RemoveRobotArm();
-
-	BaseClass::Drop( vecVelocity );
-}
-
-//-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFRobotArm::UpdateOnRemove( void )

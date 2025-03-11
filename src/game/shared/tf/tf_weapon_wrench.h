@@ -76,7 +76,6 @@ public:
 
 #ifdef GAME_DLL
 	virtual void		Equip( CBaseCombatCharacter *pOwner );
-	virtual void		Drop( const Vector &vecVelocity );
 	virtual void		UpdateOnRemove( void );
 	void				RemoveRobotArm();
 	virtual void		OnActiveStateChanged( int iOldState );

@@ -97,9 +97,7 @@
 #include "tf_logic_robot_destruction.h"
 #include "econ_notifications.h"
 #include "tf_weapon_buff_item.h"
-#include "tf_dropped_weapon.h"
 #include "tf_hud_notification_panel.h"
-#include "tf_dropped_weapon.h"
 #include "tf_hud_passtime_reticle.h"
 #include "passtime_convars.h"
 #include "c_tf_passtime_logic.h"
@@ -2515,12 +2513,6 @@ CEconItemView *GetEconItemViewFromProxyEntity( void *pEntity )
 		if ( pViewModel && pViewModel->GetWeapon() )
 		{
 			return pViewModel->GetWeapon()->GetAttributeContainer()->GetItem();
-		}
-
-		CTFDroppedWeapon *pDroppedWeapon = dynamic_cast<CTFDroppedWeapon*>( pBaseEntity );
-		if ( pDroppedWeapon && pDroppedWeapon->GetItem() && pDroppedWeapon->GetItem()->GetItemDefIndex() != INVALID_ITEM_DEF_INDEX )
-		{
-			return pDroppedWeapon->GetItem();
 		}
 	}
 	// No direct entity, might be a EconItem (PlayerModelPanels)

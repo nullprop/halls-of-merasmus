@@ -1072,14 +1072,6 @@ static void StartUseActionSlotItem( const CCommand &args )
 		}
 	}
 
-	// trying to pick up a dropped weapon?
-	if ( pLocalPlayer->GetDroppedWeaponInRange() != NULL )
-	{
-		KeyValues *kv = new KeyValues( "+use_action_slot_item_server" );
-		engine->ServerCmdKeyValues( kv );
-		return;
-	}
-
 	if ( TFGameRules() && TFGameRules()->IsUsingGrapplingHook() )
 	{
 		CTFGrapplingHook *pGrapplingHook = dynamic_cast< CTFGrapplingHook* >( pLocalPlayer->GetEntityForLoadoutSlot( LOADOUT_POSITION_ACTION ) );

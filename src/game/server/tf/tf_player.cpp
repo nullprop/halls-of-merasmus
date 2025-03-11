@@ -106,7 +106,6 @@
 #include "tf_logic_halloween_2014.h"
 #include "tf_weapon_knife.h"
 #include "tf_weapon_grapplinghook.h"
-#include "tf_dropped_weapon.h"
 #include "tf_passtime_logic.h"
 #include "tf_weapon_passtime_gun.h"
 #include "player_resource.h"
@@ -1230,16 +1229,6 @@ void CTFPlayer::TFPlayerThink()
 	if ( m_pStateInfo && m_pStateInfo->pfnThink )
 	{
 		(this->*m_pStateInfo->pfnThink)();
-	}
-
-	if ( m_flSendPickupWeaponMessageTime != -1.f && gpGlobals->curtime >= m_flSendPickupWeaponMessageTime )
-	{
-		CSingleUserRecipientFilter filter( this );
-		filter.MakeReliable();
-		UserMessageBegin( filter, "PlayerPickupWeapon" );
-		MessageEnd();
-
-		m_flSendPickupWeaponMessageTime = -1.f;
 	}
 
 	// In doomsday event, kart can run over ghost to do stuff
@@ -3823,8 +3812,6 @@ void CTFPlayer::Spawn()
 
 	m_flHelpmeButtonPressTime = 0.f;
 
-	m_flSendPickupWeaponMessageTime = -1.f;
-
 	m_bAlreadyUsedExtendFreezeThisDeath = false;
 
 	SetRespawnOverride( -1.f, NULL_STRING );
@@ -4927,9 +4914,6 @@ void CTFPlayer::UseActionSlotItemPressed( void )
 {
 	m_bUsingActionSlot = true;
 
-	if ( TryToPickupDroppedWeapon() )
-		return;
-
 	int iNoiseMaker = 0;
 	CALL_ATTRIB_HOOK_INT( iNoiseMaker, enable_misc2_noisemaker );
 	if ( iNoiseMaker )
@@ -5177,29 +5161,6 @@ void CTFPlayer::ValidateWeapons( TFPlayerClassData_t *pData, bool bResetWeapons 
 			if ( GetActiveTFWeapon() == pWeapon )
 			{
 				SwitchToNextBestWeapon( pWeapon );
-			}
-
-			// drop weapon that belongs to other player, unless we're not regenerating
-			// which happens at round restart
-			if ( !bForceRemoved && m_bRegenerating )
-			{
-				CEconItemView *pDroppedItem = pWeapon->GetAttributeContainer()->GetItem();
-				CSteamID steamID;
-				GetSteamID( &steamID );
-				if ( pDroppedItem->GetAccountID() != steamID.GetAccountID() )
-				{
-					// Find the position and angle of the weapons so the "ammo box" matches.
-					Vector vecPackOrigin;
-					QAngle vecPackAngles;
-					if( !CalculateAmmoPackPositionAndAngles( pWeapon, vecPackOrigin, vecPackAngles ) )
-						return;
-
-					CTFDroppedWeapon *pDroppedWeapon = CTFDroppedWeapon::Create( this, vecPackOrigin, vecPackAngles, pWeapon->GetWorldModel(), pDroppedItem );
-					if ( pDroppedWeapon )
-					{
-						pDroppedWeapon->InitDroppedWeapon( this, pWeapon, false );
-					}
-				}
 			}
 
 			// We shouldn't have this weapon. Remove it.
@@ -8447,58 +8408,6 @@ void CTFPlayer::TFWeaponRemove( int iWeaponID )
 		RemovePlayerItem( pWeapon );
 		UTIL_Remove( pWeapon );
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::BumpWeapon( CBaseCombatWeapon *pWeapon )
-{
-	CBaseCombatCharacter *pOwner = pWeapon->GetOwner();
-
-	// Can I have this weapon type?
-	if ( !IsAllowedToPickupWeapons() )
-		return false;
-
-	if ( pOwner || !Weapon_CanUse( pWeapon ) || !g_pGameRules->CanHavePlayerItem( this, pWeapon ) )
-	{
-		UTIL_Remove( pWeapon );
-		return false;
-	}
-
-	// Don't let the player fetch weapons through walls (use MASK_SOLID so that you can't pickup through windows)
-	if ( !pWeapon->FVisible( this, MASK_SOLID ) )
-		return false;
-
-	// ----------------------------------------
-	// If I already have it just take the ammo
-	// ----------------------------------------
-	if (Weapon_OwnsThisType( pWeapon->GetClassname(), pWeapon->GetSubType())) 
-	{
-		UTIL_Remove( pWeapon );
-		return true;
-	}
-	else 
-	{
-		// -------------------------
-		// Otherwise take the weapon
-		// -------------------------
-		pWeapon->CheckRespawn();
-
-		pWeapon->AddSolidFlags( FSOLID_NOT_SOLID );
-		pWeapon->AddEffects( EF_NODRAW );
-
-		Weapon_Equip( pWeapon );
-		return true;
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::DropCurrentWeapon( void )
-{
-	return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -12117,163 +12026,8 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 
 	RemoveTeleportEffect();
 
-	// Drop a pack with their leftover ammo
-	// Arena: Only do this if the match hasn't started yet.
-	if ( ShouldDropAmmoPack() )
-	{
-		DropAmmoPack( info, false, false );
-	}
-
-	if ( TFGameRules()->IsInMedievalMode() )
-	{
-		DropHealthPack( info, true );
-	}
-
-#ifdef TF_RAID_MODE
-	// Bots sometimes drop health kits in Raid Mode
-	if ( TFGameRules()->IsRaidMode() && GetTeamNumber() == TF_TEAM_RED )
-	{
-		if ( RandomInt( 1, 100 ) <= tf_raid_drop_healthkit_chance.GetInt() )
-		{
-			DropHealthPack( info, true );
-		}
-	}
-#endif // TF_RAID_MODE
-
-	// PvE mode credits/currency
-	if ( TFGameRules()->IsMannVsMachineMode() )
-	{
-		MannVsMachineStats_PlayerEvent_Died( this );
-
-		if ( IsBot() )
-		{
-			m_nCurrency = 0;
-			if ( !IsMissionEnemy() && m_pWaveSpawnPopulator )
-			{
-				m_nCurrency = m_pWaveSpawnPopulator->GetCurrencyAmountPerDeath();
-			}
-
-			// only drop currency if the map designer has specified it
-			if ( m_nCurrency > 0 )
-			{
-				// We only drop a pack when the game's accumulated enough to make it worth it
-				int nDropAmount = TFGameRules()->CalculateCurrencyAmount_CustomPack( m_nCurrency );
-				if ( nDropAmount )
-				{
-					bool bDropPack = true;
-
-					// Give money directly to the team if a trigger killed us
-					if ( info.GetDamageType() )
-					{
-						CBaseTrigger *pTrigger = dynamic_cast< CBaseTrigger *>( info.GetInflictor() );
-						if ( pTrigger )
-						{
-							bDropPack = false;	
-							TFGameRules()->DistributeCurrencyAmount( nDropAmount, NULL, true, true );
-						}
-					}
-
-					if ( bDropPack )
-					{
-						CTFPlayer* pMoneyMaker = NULL;
-						if ( pPlayerAttacker && pPlayerAttacker->IsPlayerClass( TF_CLASS_SNIPER ) )
-						{
-							if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BLEEDING || ( pKillerWeapon && WeaponID_IsSniperRifleOrBow( pKillerWeapon->GetWeaponID() ) ) )
-							{
-								pMoneyMaker = pPlayerAttacker;
-
-								if ( IsHeadshot( info.GetDamageCustom() ) || ( LastHitGroup() == HITGROUP_HEAD && pKillerWeapon && pKillerWeapon->GetJarateTime() ) )
-								{
-									IGameEvent *event = gameeventmanager->CreateEvent( "mvm_sniper_headshot_currency" );
-									if ( event )
-									{
-										event->SetInt( "userid", pPlayerAttacker->GetUserID() );
-										event->SetInt( "currency", nDropAmount );
-										gameeventmanager->FireEvent( event );
-									}
-								}
-							}
-						}
-
-						int iForceDistributeCurrency = 0;
-						CALL_ATTRIB_HOOK_INT( iForceDistributeCurrency, force_distribute_currency_on_death );
-						bool bForceDistribute = iForceDistributeCurrency != 0;
-
-						// if I'm force to distribute currency, just give the credit to the attacker
-						if ( !pMoneyMaker && bForceDistribute )
-						{
-							pMoneyMaker = pPlayerAttacker;
-						}
-
-						DropCurrencyPack( TF_CURRENCY_PACK_CUSTOM, nDropAmount, bForceDistribute, pMoneyMaker );
-					}
-				}
-			}
-
-			if ( !m_bIsSupportEnemy )
-			{
-				unsigned int iFlags = m_bIsMissionEnemy ? MVM_CLASS_FLAG_MISSION : MVM_CLASS_FLAG_NORMAL;
-				if ( IsMiniBoss() )
-				{
-					iFlags |= MVM_CLASS_FLAG_MINIBOSS;
-				}
-
-				TFObjectiveResource()->DecrementMannVsMachineWaveClassCount( GetPlayerClass()->GetClassIconName(), iFlags );
-			}
-
-			if ( m_bIsLimitedSupportEnemy )
-			{
-				TFObjectiveResource()->DecrementMannVsMachineWaveClassCount( GetPlayerClass()->GetClassIconName(), MVM_CLASS_FLAG_SUPPORT_LIMITED );
-			}
-
-			// Electrical effect whenever a bot dies
-			CPVSFilter filter( WorldSpaceCenter() );
-			TE_TFParticleEffect( filter, 0.f, "bot_death", GetAbsOrigin(), vec3_angle );
-		}
-		else
-		{
-			// Players lose money for dying
-			RemoveCurrency( tf_mvm_death_penalty.GetInt() );
-		}
-
-		// tell the population manager a player died
-		// THIS MUST HAPPEN AFTER THE CURRENCY CALCULATION (ABOVE)
-		// NOW THAT WE'RE CALCULATING CURRENCY ON-DEATH INSTEAD OF ON-SPAWN
-		if ( g_pPopulationManager )
-		{
-			g_pPopulationManager->OnPlayerKilled( this );
-		}
-
-		if ( IsBot() && HasTheFlag() && GetTeamNumber() == TF_TEAM_PVE_INVADERS )
-		{
-			int nLevel = TFObjectiveResource()->GetFlagCarrierUpgradeLevel();
-			IGameEvent *event = gameeventmanager->CreateEvent( "mvm_bomb_carrier_killed" );
-			if ( event )
-			{
-				event->SetInt( "level", nLevel );
-				gameeventmanager->FireEvent( event );
-			}
-		}
-
-		if ( !IsBot() && !m_hReviveMarker )
-		{
-			m_hReviveMarker = CTFReviveMarker::Create( this );
-		}
-	}
-
-	// This system is designed to coarsely measure a player's skill in public pvp games.
-//	UpdateSkillRatingData();
-
-
 	if ( pPlayerAttacker )
 	{
-		int iDropHealthOnKill = 0;
-		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayerAttacker, iDropHealthOnKill, drop_health_pack_on_kill );
-		if ( iDropHealthOnKill == 1 )
-		{
-			DropHealthPack( info, true );
-		}
-
 		int iKillForcesAttackerToLaugh = 0;
 		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pPlayerAttacker, iKillForcesAttackerToLaugh, kill_forces_attacker_to_laugh );
 		if ( iKillForcesAttackerToLaugh == 1 )
@@ -12891,281 +12645,6 @@ struct SkillRatingAttackRecord_t
 	CHandle< CTFPlayer > hAttacker;
 	float flDamagePercent;
 };
-	
-//-----------------------------------------------------------------------------
-// Purpose: 
-// Input  : *pWeapon - 
-//			&vecOrigin - 
-//			&vecAngles - 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::CalculateAmmoPackPositionAndAngles( CTFWeaponBase *pWeapon, Vector &vecOrigin, QAngle &vecAngles )
-{
-	// Look up the hand and weapon bones.
-	int iHandBone = LookupBone( "weapon_bone" );
-	if ( iHandBone == -1 )
-		return false;
-
-	GetBonePosition( iHandBone, vecOrigin, vecAngles );
-
-	// need to fix up the z because the weapon bone position can be under the player
-	if ( IsTaunting() )
-	{
-		// put the pack at the middle of the dying player
-		vecOrigin = WorldSpaceCenter();
-	}
-
-	// Draw the position and angles.
-	Vector vecDebugForward2, vecDebugRight2, vecDebugUp2;
-	AngleVectors( vecAngles, &vecDebugForward2, &vecDebugRight2, &vecDebugUp2 );
-
-	/*
-	NDebugOverlay::Line( vecOrigin, ( vecOrigin + vecDebugForward2 * 25.0f ), 255, 0, 0, false, 30.0f );
-	NDebugOverlay::Line( vecOrigin, ( vecOrigin + vecDebugRight2 * 25.0f ), 0, 255, 0, false, 30.0f );
-	NDebugOverlay::Line( vecOrigin, ( vecOrigin + vecDebugUp2 * 25.0f ), 0, 0, 255, false, 30.0f ); 
-	*/
-
-	VectorAngles( vecDebugUp2, vecAngles );
-
-	return true;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-// NOTE: If we don't let players drop ammo boxes, we don't need this code..
-//-----------------------------------------------------------------------------
-void CTFPlayer::AmmoPackCleanUp( void )
-{
-	// If we have more than 3 ammo packs out now, destroy the oldest one.
-	int iNumPacks = 0;
-	CTFAmmoPack *pOldestBox = NULL;
-
-	// Cycle through all ammobox in the world and remove them
-	CBaseEntity *pEnt = gEntList.FindEntityByClassname( NULL, "tf_ammo_pack" );
-	while ( pEnt )
-	{
-		CBaseEntity *pOwner = pEnt->GetOwnerEntity();
-		if (pOwner == this)
-		{
-			CTFAmmoPack *pThisBox = dynamic_cast<CTFAmmoPack *>( pEnt );
-			Assert( pThisBox );
-			if ( pThisBox )
-			{
-				iNumPacks++;
-
-				// Find the oldest one
-				if ( pOldestBox == NULL || pOldestBox->GetCreationTime() > pThisBox->GetCreationTime() )
-				{
-					pOldestBox = pThisBox;
-				}
-			}
-		}
-
-		pEnt = gEntList.FindEntityByClassname( pEnt, "tf_ammo_pack" );
-	}
-
-	// If they have more than 3 packs active, remove the oldest one
-	if ( iNumPacks > 3 && pOldestBox )
-	{
-		UTIL_Remove( pOldestBox );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::ShouldDropAmmoPack()
-{
-	if ( TFGameRules()->IsMannVsMachineMode() && IsBot() )
-		return false;
-
-	if ( TFGameRules()->IsInArenaMode() && TFGameRules()->InStalemate() == false )
-		return false;
-
-	return true;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFPlayer::DropAmmoPack( const CTakeDamageInfo &info, bool bEmpty, bool bDisguisedWeapon )
-{
-	// We want the ammo packs to look like the player's weapon model they were carrying.
-	// except if they are melee or building weapons
-	CTFWeaponBase *pWeapon = NULL;
-	CTFWeaponBase *pActiveWeapon = m_Shared.GetActiveTFWeapon();
-
-	if ( !pActiveWeapon || pActiveWeapon->GetTFWpnData().m_bDontDrop )
-	{
-		// Don't drop this one, find another one to drop
-
-		int iWeight = -1;
-
-		// find the highest weighted weapon
-		for (int i = 0;i < WeaponCount(); i++) 
-		{
-			CTFWeaponBase *pWpn = ( CTFWeaponBase *)GetWeapon(i);
-			if ( !pWpn )
-				continue;
-
-			if ( pWpn->GetTFWpnData().m_bDontDrop )
-				continue;
-
-			int iThisWeight = pWpn->GetTFWpnData().iWeight;
-
-			if ( iThisWeight > iWeight )
-			{
-				iWeight = iThisWeight;
-				pWeapon = pWpn;
-			}
-		}
-	}
-	else
-	{
-		pWeapon = pActiveWeapon;
-	}
-
-	// If we didn't find one, bail
-	if ( !pWeapon )
-		return;
-
-	// Figure out which model/skin to use for the drop. We may pull from our real weapon or
-	// from the weapon we're disguised as.
-	CTFWeaponBase *pDropWeaponProps = (bDisguisedWeapon && m_Shared.InCond( TF_COND_DISGUISED ) && m_Shared.GetDisguiseWeapon())
-									? m_Shared.GetDisguiseWeapon()
-									: pWeapon;
-
-	const char *pszWorldModel = pDropWeaponProps->GetWorldModel();
-	int nSkin = pDropWeaponProps->GetDropSkinOverride();
-
-	if ( nSkin < 0 )
-	{
-		nSkin = pDropWeaponProps->GetSkin();
-	}
-
-	if ( pszWorldModel == NULL )
-		return;
-
-	// Find the position and angle of the weapons so the "ammo box" matches.
-	Vector vecPackOrigin;
-	QAngle vecPackAngles;
-	if( !CalculateAmmoPackPositionAndAngles( pWeapon, vecPackOrigin, vecPackAngles ) )
-		return;
-
-	CEconItemView *pItem = pDropWeaponProps->GetAttributeContainer()->GetItem();
-	bool bIsSuicide = info.GetAttacker() ? info.GetAttacker()->GetTeamNumber() == GetTeamNumber() : false;
-
-	CTFDroppedWeapon *pDroppedWeapon = CTFDroppedWeapon::Create( this, vecPackOrigin, vecPackAngles, pszWorldModel, pItem );
-	if ( pDroppedWeapon )
-	{
-		pDroppedWeapon->InitDroppedWeapon( this, pDropWeaponProps, false, bIsSuicide );
-	}
-
-	// Create the ammo pack.
-	CTFAmmoPack *pAmmoPack = CTFAmmoPack::Create( vecPackOrigin, vecPackAngles, this, "models/items/ammopack_medium.mdl" );
-	Assert( pAmmoPack );
-	if ( pAmmoPack )
-	{
-		pAmmoPack->InitAmmoPack( this, pWeapon, nSkin, bEmpty, bIsSuicide );
-	
-		// Clean up old ammo packs if they exist in the world
-		AmmoPackCleanUp();	
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFPlayer::DropAmmoPackFromProjectile( CBaseEntity *pProjectile )
-{
-	QAngle qPackAngles = pProjectile->GetAbsAngles();
-	Vector vecPackOrigin = pProjectile->GetAbsOrigin();
-	UTIL_Remove( pProjectile );
-
-	// Create the ammo pack.
-	CTFAmmoPack *pAmmoPack = CTFAmmoPack::Create( vecPackOrigin, qPackAngles, this, "models/items/ammopack_small.mdl" );
-	Assert( pAmmoPack );
-	if ( pAmmoPack )
-	{
-		// half of ammopack_small
-		float flAmmoRatio = 0.1f;
-		pAmmoPack->InitAmmoPack( this, NULL, 0, false, false, flAmmoRatio );
-
-		// Clean up old ammo packs if they exist in the world
-		AmmoPackCleanUp();
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void CTFPlayer::DropHealthPack( const CTakeDamageInfo &info, bool bEmpty )
-{
-	Vector vecSrc = this->WorldSpaceCenter();
-	CHealthKitSmall *pMedKit = assert_cast<CHealthKitSmall*>( CBaseEntity::Create( "item_healthkit_small", vecSrc, vec3_angle, this ) );
-	if ( pMedKit )
-	{
-		Vector vecImpulse = RandomVector( -1,1 );
-		vecImpulse.z = 1;
-		VectorNormalize( vecImpulse );
-
-		Vector vecVelocity = vecImpulse * 250.0;
-		pMedKit->DropSingleInstance( vecVelocity, this, 0 );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CTFPlayer::DropCurrencyPack( CurrencyRewards_t nSize /* = TF_CURRENCY_PACK_SMALL */, int nAmount /*= 0*/, bool bForceDistribute /*= false*/, CBasePlayer* pMoneyMaker /*= NULL*/ )
-{
-	// SMALL, MEDIUM, LARGE packs generate a default value on spawn
-	// Only pass in an amount when dropping TF_CURRENCY_PACK_CUSTOM
-
-	Vector vecSrc = this->WorldSpaceCenter();
-	CCurrencyPack *pCurrencyPack = NULL;
-
-	switch ( nSize )
-	{
-	case TF_CURRENCY_PACK_SMALL:
-		pCurrencyPack = assert_cast<CCurrencyPackSmall*>( CBaseEntity::Create( "item_currencypack_small", vecSrc, vec3_angle, this ) );
-		break;
-
-	case TF_CURRENCY_PACK_MEDIUM:
-		pCurrencyPack = assert_cast<CCurrencyPackMedium*>( CBaseEntity::Create( "item_currencypack_medium", vecSrc, vec3_angle, this ) );
-		break;
-
-	case TF_CURRENCY_PACK_LARGE:
-		pCurrencyPack = assert_cast<CCurrencyPack*>( CBaseEntity::Create( "item_currencypack_large", vecSrc, vec3_angle, this ) );
-		break;
-
-	case TF_CURRENCY_PACK_CUSTOM:
-		// Pop file may have said to not drop anything
-		Assert( nAmount > 0 );
-		if ( nAmount == 0 )
-			return;
-
-		// Create no spawn first so we can set the multiplier before it spawns & picks it model
-		pCurrencyPack = assert_cast<CCurrencyPack*>( CBaseEntity::CreateNoSpawn( "item_currencypack_custom", vecSrc, vec3_angle, this ) );
-		pCurrencyPack->SetAmount( nAmount );
-		break;
-	};
-
-	if ( pCurrencyPack )
-	{
-		Vector vecImpulse = RandomVector( -1,1 );
-		vecImpulse.z = 1;
-		VectorNormalize( vecImpulse );
-		Vector vecVelocity = vecImpulse * 250.0;
-
-		if ( pMoneyMaker || bForceDistribute )
-		{
-			pCurrencyPack->DistributedBy( pMoneyMaker );
-		}
-		
-		DispatchSpawn( pCurrencyPack );
-		pCurrencyPack->DropSingleInstance( vecVelocity, this, 0, 0 );
-	}
-}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -15691,27 +15170,6 @@ void CTFPlayer::FeignDeath( const CTakeDamageInfo& info, bool bDeathnotice )
 	{
 		// Fake death notice.
 		TFGameRules()->DeathNotice( this, info );
-	}
-
-	// Drop an empty ammo pack!
-	if ( ShouldDropAmmoPack() )
-	{
-		DropAmmoPack( info, true /*Empty*/, bDisguised );
-	}
-
-	if ( TFGameRules()->IsInMedievalMode() )
-	{
-		DropHealthPack( info, true );
-	}
-
-	if ( GetActiveTFWeapon() )
-	{
-		int iDropHealthOnKill = 0;
-		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( GetActiveTFWeapon(), iDropHealthOnKill, drop_health_pack_on_kill );
-		if ( iDropHealthOnKill == 1 )
-		{
-			DropHealthPack( info, true );
-		}
 	}
 
 	CTFPlayer *pTFPlayer = ToTFPlayer( info.GetAttacker() );
@@ -22597,108 +22055,6 @@ bool CTFPlayer::CanScorePointForPD( void ) const
 
 	// Rate limit
 	return ( ( m_flNextScorePointForPD < 0 ) || ( m_flNextScorePointForPD < gpGlobals->curtime ) );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::PickupWeaponFromOther( CTFDroppedWeapon *pDroppedWeapon )
-{
-	const CEconItemView *pItem = pDroppedWeapon->GetItem();
-	if ( !pItem )
-		return false;
-
-	if ( pItem->IsValid() )
-	{
-		int iClass = GetPlayerClass()->GetClassIndex();
-		int iItemSlot = pItem->GetStaticData()->GetLoadoutSlot( iClass );
-		CTFWeaponBase *pWeapon = dynamic_cast< CTFWeaponBase* >( GetEntityForLoadoutSlot( iItemSlot ) );
-
-		if ( !pWeapon )
-		{
-			AssertMsg( false, "No weapon to put down when picking up a dropped weapon!" );
-			return false;
-		}
-		
-		// we need to force translating the name here.
-		// GiveNamedItem will not translate if we force creating the item
-		const char *pTranslatedWeaponName = TranslateWeaponEntForClass( pItem->GetStaticData()->GetItemClass(), iClass );
-		CTFWeaponBase *pNewItem = dynamic_cast<CTFWeaponBase*>( GiveNamedItem( pTranslatedWeaponName, 0, pItem, true ));
-		Assert( pNewItem );
-		if ( pNewItem )
-		{
-			CTFWeaponBuilder *pBuilder = dynamic_cast<CTFWeaponBuilder*>( (CBaseEntity*)pNewItem );
-			if ( pBuilder )
-			{
-				pBuilder->SetSubType( GetPlayerClass()->GetData()->m_aBuildable[0] );
-			}
-
-			// make sure we removed our current weapon				
-			if ( pWeapon )
-			{
-				// drop current weapon at same spot as the one we just picked up
-				CTFDroppedWeapon *pNewDroppedWeapon = CTFDroppedWeapon::Create(
-					this,
-					pDroppedWeapon->GetAbsOrigin(),
-					pDroppedWeapon->GetAbsAngles(),
-					pWeapon->GetWorldModel(),
-					pWeapon->GetAttributeContainer()->GetItem()
-				);
-				if ( pNewDroppedWeapon )
-				{
-					pNewDroppedWeapon->InitDroppedWeapon( this, pWeapon, true );
-				}
-
-				Weapon_Detach( pWeapon );
-				UTIL_Remove( pWeapon );
-			}
-				
-			CBaseCombatWeapon *pLastWeapon = GetLastWeapon();
-			pNewItem->MarkAttachedEntityAsValidated();
-			pNewItem->GiveTo( this );
-			Weapon_SetLast( pLastWeapon );
-			
-			pDroppedWeapon->InitPickedUpWeapon( this, pNewItem );
-
-			// can't use the weapon we just picked up?
-			if ( !Weapon_CanSwitchTo( pNewItem ) )
-			{
-				// try next best thing we can use
-				SwitchToNextBestWeapon( pNewItem );
-			}
-
-			// delay pickup weapon message
-			m_flSendPickupWeaponMessageTime = gpGlobals->curtime + 0.1f;
-
-			return true;
-		}
-	}
-
-	return false;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::TryToPickupDroppedWeapon()
-{
-	if ( !CanAttack() )
-		return false;
-
-	if ( GetActiveWeapon() && ( GetActiveWeapon()->m_flNextPrimaryAttack > gpGlobals->curtime ) )
-		return false;
-
-	CTFDroppedWeapon *pDroppedWeapon = GetDroppedWeaponInRange();
-	if ( pDroppedWeapon && !pDroppedWeapon->IsMarkedForDeletion() )
-	{
-		if ( PickupWeaponFromOther( pDroppedWeapon ) )
-		{
-			UTIL_Remove( pDroppedWeapon );
-			return true;
-		}
-	}
-	
-	return false;
 }
 
 //-----------------------------------------------------------------------------
