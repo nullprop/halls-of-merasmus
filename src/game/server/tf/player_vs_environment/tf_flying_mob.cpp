@@ -25,6 +25,7 @@ ConVar tf_flying_mob_hover_height( "tf_flying_mob_hover_height", "200", FCVAR_CH
 ConVar tf_flying_mob_acceleration( "tf_flying_mob_acceleration", "300", FCVAR_CHEAT );
 ConVar tf_flying_mob_horiz_damping( "tf_flying_mob_horiz_damping", "2", FCVAR_CHEAT );
 ConVar tf_flying_mob_vert_damping( "tf_flying_mob_vert_damping", "1", FCVAR_CHEAT );
+ConVar tf_flying_mob_jarate_range( "tf_flying_mob_jarate_range", "600", FCVAR_CHEAT );
 
 //-----------------------------------------------------------------------------------------------------
 // NPC FlyingMob versions of the players
@@ -173,6 +174,20 @@ void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 {
 	EmitSound( "Halloween.Merasmus_Hiding_Explode" );
 	DispatchParticleEffect( "eyeboss_death", GetAbsOrigin(), GetAbsAngles() );
+
+	// Jarate nearby players
+	CUtlVector< CTFPlayer * > playerVector;
+	CollectPlayers( &playerVector, TF_TEAM_RED, COLLECT_ONLY_LIVING_PLAYERS );
+	CollectPlayers( &playerVector, TF_TEAM_BLUE, COLLECT_ONLY_LIVING_PLAYERS, APPEND_PLAYERS );
+
+	for( int i=0; i<playerVector.Count(); ++i )
+	{
+		if ( IsRangeLessThan( playerVector[i], tf_flying_mob_jarate_range.GetFloat() ) && 
+			IsLineOfSightClear( playerVector[i], CBaseCombatCharacter::IGNORE_ACTORS ) )
+		{
+			playerVector[i]->m_Shared.AddCond( TF_COND_URINE, 10.0f );
+		}
+	}
 
 	const Vector spawnOrigin = WorldSpaceCenter();
 	const QAngle spawnAngles = QAngle();
