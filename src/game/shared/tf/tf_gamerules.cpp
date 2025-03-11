@@ -790,7 +790,7 @@ ConVar tf_tournament_classchange_allowed( "tf_tournament_classchange_allowed", "
 ConVar tf_tournament_classchange_ready_allowed( "tf_tournament_classchange_ready_allowed", "1", FCVAR_REPLICATED, "Allow players to change class after they are READY?.\n" );
 
 ConVar tf_classlimit( "tf_classlimit", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Limit on how many players can be any class (i.e. tf_class_limit 2 would limit 2 players per class).\n", true, 0.f, false, 0.f );
-ConVar tf_player_movement_restart_freeze( "tf_player_movement_restart_freeze", "1", FCVAR_REPLICATED, "When set, prevent player movement during round restart" );
+ConVar tf_player_movement_restart_freeze( "tf_player_movement_restart_freeze", "0", FCVAR_REPLICATED, "When set, prevent player movement during round restart" );
 
 ConVar tf_autobalance_ask_candidates_maxtime( "tf_autobalance_ask_candidates_maxtime", "10", FCVAR_REPLICATED );
 ConVar tf_autobalance_dead_candidates_maxtime( "tf_autobalance_dead_candidates_maxtime", "15", FCVAR_REPLICATED );
@@ -1053,7 +1053,7 @@ ConVar tf_creep_wave_player_respawn_time( "tf_creep_wave_player_respawn_time", "
 
 ConVar hide_server( "hide_server", "0", FCVAR_GAMEDLL, "Whether the server should be hidden from the master server" );
 
-ConVar mp_waitingforplayers_time( "mp_waitingforplayers_time", (IsX360()?"15":"30"), FCVAR_GAMEDLL | WAITING_FOR_PLAYERS_FLAGS, "WaitingForPlayers time length in seconds" );
+ConVar mp_waitingforplayers_time( "mp_waitingforplayers_time", "0", FCVAR_GAMEDLL | WAITING_FOR_PLAYERS_FLAGS, "WaitingForPlayers time length in seconds" );
 
 ConVar tf_gamemode_arena ( "tf_gamemode_arena", "0", FCVAR_REPLICATED | FCVAR_NOTIFY | FCVAR_DEVELOPMENTONLY );
 ConVar tf_gamemode_cp ( "tf_gamemode_cp", "0", FCVAR_REPLICATED | FCVAR_NOTIFY | FCVAR_DEVELOPMENTONLY );
