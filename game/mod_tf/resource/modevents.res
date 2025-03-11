@@ -1857,9 +1857,6 @@
 	"winpanel_show_scores"
 	{}
 
-	"top_streams_request_finished"
-	{}
-
 	"competitive_state_changed"
 	{}
 

@@ -15,7 +15,6 @@
 
 #include "vgui/ISystem.h"
 
-#include "tf_streams.h"
 #include "tf_badge_panel.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
