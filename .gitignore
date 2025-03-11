@@ -3,6 +3,13 @@
 # Misc mod files
 game/mod_tf/materials/logo/new_tf2_logo.png
 
+# Mapping
+*.vmx
+*.prt
+*.log
+game/mod_tf/mapsrc/*.bsp
+game/mod_tf/maps/graphs/
+
 # Visual Studio 
 *.suo
 *.user
