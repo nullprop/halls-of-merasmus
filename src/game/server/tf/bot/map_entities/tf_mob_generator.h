@@ -34,15 +34,15 @@ private:
 	int m_spawnCount;
 	int m_maxActiveCount;
 	float m_spawnInterval;
-	bool m_bSpawnOnlyWhenTriggered;
 	MobType_t m_mobType;
+	bool m_bSpawnOnlyWhenTriggered;
 	int m_spawnCountRemaining;
 	bool m_bExpended;
 	bool m_bEnabled;
 
-	COutputEvent m_onSpawned;
-	COutputEvent m_onExpended;
+	COutputEvent m_onBotSpawned;
 	COutputEvent m_onBotKilled;
+	COutputEvent m_onExpended;
 
 	CUtlVector< CHandle< NextBotCombatCharacter > > m_spawnedBotVector;
 };

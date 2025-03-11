@@ -44,8 +44,8 @@ BEGIN_DATADESC( CTFMobGenerator )
 	DEFINE_KEYFIELD( m_spawnCount,		FIELD_INTEGER,	"count" ),
 	DEFINE_KEYFIELD( m_maxActiveCount,	FIELD_INTEGER,	"maxActive" ),
 	DEFINE_KEYFIELD( m_spawnInterval,	FIELD_FLOAT,	"interval" ),
-	DEFINE_KEYFIELD( m_bSpawnOnlyWhenTriggered,			FIELD_INTEGER,	"spawnOnlyWhenTriggered" ),
 	DEFINE_KEYFIELD( m_mobType,			FIELD_INTEGER,	"mobType" ),
+	DEFINE_KEYFIELD( m_bSpawnOnlyWhenTriggered, FIELD_INTEGER, "spawnOnlyWhenTriggered" ),
 
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
@@ -53,9 +53,9 @@ BEGIN_DATADESC( CTFMobGenerator )
 	DEFINE_INPUTFUNC( FIELD_VOID, "SpawnBot", InputSpawnBot ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "RemoveBots", InputRemoveBots ),
 
-	DEFINE_OUTPUT( m_onSpawned, "OnSpawned" ),
-	DEFINE_OUTPUT( m_onExpended, "OnExpended" ),
+	DEFINE_OUTPUT( m_onBotSpawned, "OnBotSpawned" ),
 	DEFINE_OUTPUT( m_onBotKilled, "OnBotKilled" ),
+	DEFINE_OUTPUT( m_onExpended, "OnExpended" ),
 
 	DEFINE_THINKFUNC( GeneratorThink ),
 END_DATADESC()
@@ -222,7 +222,7 @@ void CTFMobGenerator::SpawnBot( void )
 	{
 		m_spawnedBotVector.AddToTail( pMob );
 
-		m_onSpawned.FireOutput( pMob, this );
+		m_onBotSpawned.FireOutput( pMob, this );
 
 		--m_spawnCountRemaining;
 		if ( m_spawnCountRemaining )

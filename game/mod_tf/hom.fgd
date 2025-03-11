@@ -1,0 +1,37 @@
+//=============================================================================
+//
+// Halls of Merasmus game definition file (.fgd)
+// For custom stuff added on top of Team Fortress 2.
+//
+//=============================================================================
+
+@include "tf.fgd"
+
+@PointClass base(Targetname, Angles, Origin) = tf_mob_generator :
+    "Creates spooky monsters!\n " +
+    "'Enable' must be called for spawning to start."
+[
+	count(integer) 	    : "Count"		: 10	: "How many mobs to spawn in total"
+	maxActive(integer) 	: "Max Active"	: 2		: "How many mobs can be alive at the same time"
+	interval(float)		: "Interval" 	: "1.5"	: "How frequently mobs are spawned"
+
+    mobType(choices)    : "Mob Type"    : 0     : "The type of mob to spawn" =
+	[
+		0 : "Melee Normal"
+		1 : "Melee Giant"
+		2 : "Flying Normal"
+	]
+
+    spawnOnlyWhenTriggered(boolean) : "Spawn Only When Triggered" : 0 : "Should mobs only spawn when InputSpawnBot is triggered?"
+
+	// Inputs
+    input Enable(void)     : "Enable the spawner. Must be called for spawning to start."
+    input Disable(void)    : "Disable the spawner"
+	input SpawnBot(void)   : "Spawn a bot from this generator"
+    input RemoveBots(void) : "Remove all bots spawned from this generator"
+
+	// Outputs
+	output OnBotSpawned(void)   : "Fires when a bot is spawned from this generator"
+	output OnBotKilled(void)    : "Fires when a bot spawned from this generator dies"
+	output OnExpended(void)     : "Fires when the maximum 'Count' of bots have been spawned"
+]
