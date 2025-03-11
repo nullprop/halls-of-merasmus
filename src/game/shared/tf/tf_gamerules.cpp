@@ -127,6 +127,9 @@
 	#include "tf_party.h"
 	#include "tf_autobalance.h"
 	#include "player_voice_listener.h"
+
+	#include "player_vs_environment/tf_melee_mob.h"
+	#include "player_vs_environment/tf_flying_mob.h"
 #endif
 
 #include "tf_mann_vs_machine_stats.h"
@@ -3518,7 +3521,7 @@ void CTFGameRules::Precache( void )
 	CTFPlayer::m_bTFPlayerNeedsPrecache = true;
 
 	CTFMeleeMob::PrecacheMeleeMob();
-	CTFFlyingMob::PrecacheFlyingMob()
+	CTFFlyingMob::PrecacheFlyingMob();
 }
 #endif
 
