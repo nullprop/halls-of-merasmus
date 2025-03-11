@@ -33,6 +33,8 @@ public:
 	CTFMobDrop();
 	~CTFMobDrop();
 
+	static void PrecacheDrops( void );
+
 	void	Spawn( void );
 	void	Precache( void );
 	void	UpdateOnRemove( void );
@@ -53,7 +55,7 @@ public:
 	virtual MobDrops_t	GetDropType( void ) { return TF_MOB_DROP_CASH_LARGE; }
 	virtual const char *GetDefaultPowerupModel( void ) { return "models/items/currencypack_large.mdl"; }
 	virtual const char *GetPickupSound( void ) { return "MVM.MoneyPickup"; }
-	virtual const char *GetVanishSound( void ) { return "Fire.Engulf" /*"MVM.MoneyVanish"*/; }
+	virtual const char *GetVanishSound( void ) { return "Fire.Engulf"; }
 	virtual const char *GetSpawnParticles( void ) { return "mvm_cash_embers"; }
 	virtual const char *GetVanishParticles( void ) { return "mvm_cash_explosion"; }
 

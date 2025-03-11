@@ -130,6 +130,7 @@
 
 	#include "player_vs_environment/tf_melee_mob.h"
 	#include "player_vs_environment/tf_flying_mob.h"
+	#include "player_vs_environment/tf_mob_drop.h"
 #endif
 
 #include "tf_mann_vs_machine_stats.h"
@@ -3522,6 +3523,7 @@ void CTFGameRules::Precache( void )
 
 	CTFMeleeMob::PrecacheMeleeMob();
 	CTFFlyingMob::PrecacheFlyingMob();
+	CTFMobDrop::PrecacheDrops();
 }
 #endif
 

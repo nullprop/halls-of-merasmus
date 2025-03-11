@@ -176,6 +176,29 @@ void CTFMobDrop::SetAmount( float nAmount )
 	m_nAmount = nAmount;
 }
 
+void CTFMobDrop::PrecacheDrops( void )
+{
+	PrecacheScriptSound( "MVM.MoneyPickup" );
+	PrecacheScriptSound( "Fire.Engulf" );
+	PrecacheScriptSound( "AmmoPack.Touch" );
+	PrecacheScriptSound( "HealthKit.Touch" );
+
+	PrecacheParticleSystem( "mvm_cash_embers" );
+	PrecacheParticleSystem( "mvm_cash_explosion" );
+
+	PrecacheModel( "models/items/currencypack_large.mdl" );
+	PrecacheModel( "models/items/currencypack_medium.mdl" );
+	PrecacheModel( "models/items/currencypack_small.mdl" );
+
+	PrecacheModel( "models/items/ammopack_large.mdl" );
+	PrecacheModel( "models/items/ammopack_medium.mdl" );
+	PrecacheModel( "models/items/ammopack_small.mdl" );
+
+	PrecacheModel( "models/items/medkit_large.mdl" );
+	PrecacheModel( "models/items/medkit_medium.mdl" );
+	PrecacheModel( "models/items/medkit_small.mdl" );
+}
+
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
