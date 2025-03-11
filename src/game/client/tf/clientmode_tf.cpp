@@ -565,7 +565,7 @@ ClientModeTFNormal* GetClientModeTFNormal()
 }
 
 extern ConVar v_viewmodel_fov;
-ConVar v_viewmodel_fov_demo( "viewmodel_fov_demo", "54", FCVAR_ARCHIVE );
+ConVar v_viewmodel_fov_demo( "viewmodel_fov_demo", "75", FCVAR_ARCHIVE );
 float ClientModeTFNormal::GetViewModelFOV( void )
 {
 	// If we're playing back a demo, we clamp the viewmodel fov
