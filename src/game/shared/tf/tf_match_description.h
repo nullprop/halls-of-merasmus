@@ -82,7 +82,6 @@ public:
 	// Accessors for param values
 	inline int GetMatchSize() const								{ return m_pmm_match_group_size->GetInt(); }
 	inline bool BShouldAutomaticallyRequeueOnMatchEnd() const	{ return m_bAutomaticallyRequeueAfterMatchEnds; }
-	inline bool BUsesMapVoteAfterMatchEnds() const				{ return m_bUsesMapVoteOnRoundEnd; }
 	inline bool BScramblesTeamsOnRollingMatch() const			{ return m_bScramblesTeamsOnRollingMatch; }
 	inline bool BUsesXP() const									{ return m_bUsesXP; }
 	inline bool BUsesDashboard() const							{ return m_bUsesDashboardOnRoundEnd; }
@@ -129,7 +128,7 @@ public:
 	// Meta-permissions that are based on other set flags
 	//
 	// Only match-vote modes need this ability right now
-	inline bool BCanServerRequestNewMatchForLobby() const		{ return BUsesMapVoteAfterMatchEnds(); }
+	inline bool BCanServerRequestNewMatchForLobby() const		{ return false; }
 	// Auto-balance and anything that is allowed to roll new match lobbies needs to have this ability (for speculative
 	// matches if the GC is unavailable).  It should be possible to add a mode where we do rolling matches, but only
 	// when the GC is responding, which would not need the unilateral-team-assignment ability

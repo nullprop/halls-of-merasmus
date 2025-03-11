@@ -1890,11 +1890,6 @@
 	"matchmaker_stats_updated"
 	{}
 
-	"rematch_vote_period_over"
-	{
-		"success"	"bool"
-	}
-
 	"rematch_failed_to_create"
 	{}
 
@@ -1905,15 +1900,6 @@
 	{}
 
 	"mmstats_updated"
-	{}
-
-	"player_next_map_vote_change"
-	{
-		"map_index"	"byte"	// what they voted for
-		"vote"		"byte"	// what the vote was
-	}
-
-	"vote_maps_changed"
 	{}
 
 	"proto_def_changed"

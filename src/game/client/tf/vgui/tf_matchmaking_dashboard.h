@@ -53,8 +53,6 @@ enum EMMDashboadSidePanel
 	k_eBGDimmer,
 	k_eMMSettings,
 	k_eExplanations,
-	k_eNextMapWinnerPopup,
-	k_eNextMapVotePopup,
 	k_eToolTipSmallFont,
 	k_eToolTipMediumFont,
 	k_eToolTipLargeFont,

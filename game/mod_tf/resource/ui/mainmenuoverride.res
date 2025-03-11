@@ -473,6 +473,41 @@
 		}
 	}
 
+	// Expected by the engine :(
+	"VRModeButton"
+	{
+		"ControlName"	"EditablePanel"
+		"fieldname"		"VRModeButton"
+		"xpos"			"0"
+		"ypos"			"0"
+		"zpos"			"0"
+		"wide"			"0"
+		"tall"			"0"
+		"visible"		"0"
+	}
+	"RequestCoachButton"
+	{
+		"ControlName"	"EditablePanel"
+		"fieldname"		"RequestCoachButton"
+		"xpos"			"0"
+		"ypos"			"0"
+		"zpos"			"0"
+		"wide"			"0"
+		"tall"			"0"
+		"visible"		"0"
+	}
+	"CallVoteButton"
+	{
+		"ControlName"	"EditablePanel"
+		"fieldname"		"CallVoteButton"
+		"xpos"			"0"
+		"ypos"			"0"
+		"zpos"			"0"
+		"wide"			"0"
+		"tall"			"0"
+		"visible"		"0"
+	}
+
 //	"FriendsContainer"
 //	{
 //		"ControlName"	"EditablePanel"
@@ -932,7 +967,7 @@
 		"visible"		"1"
 
 		"navLeft"		"ResumeGameButton"
-		"navRight"		"CallVoteButton"
+		"navRight"		"MutePlayersButton"
 		"navDown"		"QuickplayChangeButton"
 		"navToRelay"	"SubButton"
 
@@ -1000,9 +1035,9 @@
 		"tall"			"25"
 		"visible"		"1"
 
-		"navLeft"		"CallVoteButton"
+		"navLeft"		"ReportPlayerButton"
 		"navDown"		"QuickplayChangeButton"
-		"navRight"		"RequestCoachButton"
+		"navRight"		"Notifications_ShowButtonPanel"
 		"navToRelay"	"SubButton"
 
 		"SubButton"

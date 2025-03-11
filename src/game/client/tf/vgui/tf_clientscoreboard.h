@@ -52,9 +52,6 @@ public:
 	MESSAGE_FUNC_PTR( OnItemContextMenu, "ItemContextMenu", panel );
 	void OnScoreBoardMouseRightRelease( void );
 
-
-	MESSAGE_FUNC_PARAMS( OnVoteKickPlayer, "VoteKickPlayer", pData );
-
 protected:
 	virtual void PerformLayout();
 	virtual void ApplySchemeSettings( vgui::IScheme *pScheme );

@@ -42,7 +42,6 @@ private:
 
 	void ClearContents();
 
-	CExImageButton * m_pVoteButton;
 	CExImageButton * m_pCloseButton;
 
 	vgui::EditablePanel *m_pHintContainer;

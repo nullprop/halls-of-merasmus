@@ -243,47 +243,6 @@
 				"proportionaltoparent"	"1"
 			}
 
-			"VoteEndTimeLabel"
-			{
-				"ControlName"	"Label"
-				"fieldName"		"VoteEndTimeLabel"
-				"xpos"			"0"
-				"ypos"			"rs1-17"
-				"wide"			"f0"
-				"zpos"			"100"
-				"tall"			"20"
-				"visible"		"1"
-				"enabled"		"1"
-				"font"			"HudFontSmallest"
-				"fgcolor_override"	"TanLight"
-				"textAlignment"	"center"
-				"labelText"		"%vote_end_time%"
-				"proportionaltoparent"	"1"
-			}
-
-			"RematchVoteState"
-			{
-				"ControlName"	"Label"
-				"fieldName"		"RematchVoteState"
-				"xpos"			"cs-0.5"
-				"ypos"			"rs1-27"
-				"zpos"			"100"
-				"wide"			"f0"
-				"tall"			"20"
-				"autoResize"	"0"
-				"pinCorner"		"3"
-				"visible"		"1"
-				"enabled"		"1"
-				"tabPosition"	"0"
-				"font"			"HudFontSmallest"
-				"textAlignment"	"center"
-				"dulltext"		"0"
-				"brighttext"	"0"
-				"proportionaltoparent"	"1"
-				"labeltext"		"%votes_needed%"
-				"paintbackground"	"1"
-			}
-
 		}
 
 		"RematchWaitingForOthers"
@@ -332,24 +291,6 @@
 				"fgcolor_override"	"TanLight"
 				"textAlignment"	"center"
 				"labelText"		"#TF_Matchmaking_RollingQueue_Rematch_Waiting"
-				"proportionaltoparent"	"1"
-			}
-
-			"VoteEndTimeLabel"
-			{
-				"ControlName"	"Label"
-				"fieldName"		"VoteEndTimeLabel"
-				"xpos"			"0"
-				"ypos"			"rs1-17"
-				"wide"			"f0"
-				"zpos"			"100"
-				"tall"			"20"
-				"visible"		"1"
-				"enabled"		"1"
-				"font"			"HudFontSmallest"
-				"fgcolor_override"	"TanLight"
-				"textAlignment"	"center"
-				"labelText"		"%vote_end_time%"
 				"proportionaltoparent"	"1"
 			}
 

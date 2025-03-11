@@ -685,8 +685,6 @@ $Project
 		$File	"world.h"
 		$File	"$SRCDIR\game\shared\mp_shareddefs.cpp"
 		$File	"$SRCDIR\game\shared\SharedFunctorUtils.h"
-		$File	"$SRCDIR\game\server\vote_controller.h"
-		$File	"$SRCDIR\game\server\vote_controller.cpp"
 		//Haptics
 		$File	"$SRCDIR\public\haptics\haptic_msgs.cpp"
 		$File	"$SRCDIR\public\haptics\haptic_utils.cpp"	[$WINDOWS]

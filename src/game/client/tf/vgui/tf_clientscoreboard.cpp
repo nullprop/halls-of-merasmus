@@ -64,7 +64,6 @@ using namespace vgui;
 #define SCOREBOARD_MAX_LIST_ENTRIES 12
 
 ConVar tf_scoreboard_mouse_mode( "tf_scoreboard_mouse_mode", "2", FCVAR_ARCHIVE );
-ConVar sv_vote_issue_kick_allowed( "sv_vote_issue_kick_allowed", "0", FCVAR_REPLICATED, "Can players call votes to kick players from the server?" );
 
 ConVar tf_show_all_scoreboard_elements( "tf_show_all_scoreboard_elements", "0", FCVAR_DEVELOPMENTONLY );
 
@@ -599,26 +598,6 @@ void CTFClientScoreBoardDialog::OnCommand( const char *command )
 			}
 		}
 	}
-	else if ( !V_strcmp( command, "votekickplayer" ) )
-	{
-		SectionedListPanel* pList = GetSelectedPlayerList();
-		if ( pList )
-		{
-			int iSelectedItem = pList->GetSelectedItem();
-			if ( iSelectedItem >= 0 )
-			{
-				KeyValues* pIssueKeyValues = pList->GetItemData( iSelectedItem );
-				if ( !pIssueKeyValues )
-					return;
-
-				int playerIndex = pIssueKeyValues->GetInt( "playerIndex", 0 );
-				if ( playerIndex > 0 && playerIndex <= MAX_PLAYERS )
-				{
-					engine->ClientCmd_Unrestricted( VarArgs( "spec_player %d\n", playerIndex ) );
-				}
-			}
-		}
-	}
 }
 
 //-----------------------------------------------------------------------------
@@ -657,17 +636,6 @@ void CTFClientScoreBoardDialog::OnItemContextMenu( vgui::Panel *panel )
 			OnScoreBoardMouseRightRelease();
 		}
 	}
-}
-
-
-void CTFClientScoreBoardDialog::OnVoteKickPlayer( KeyValues *pData )
-{
-	int playerIndex = pData->GetInt( "playerIndex" );
-	const char *pszReason = pData->GetString( "reason" );
-
-	char szVoteCommand[256];
-	Q_snprintf( szVoteCommand, sizeof( szVoteCommand ), "callvote %s \"%d %s\"\n;", "Kick", g_PR->GetUserID( playerIndex ), pszReason );
-	engine->ClientCmd( szVoteCommand );
 }
 
 //-----------------------------------------------------------------------------
@@ -731,8 +699,9 @@ void CTFClientScoreBoardDialog::OnScoreBoardMouseRightRelease( void )
 
 	MenuBuilder contextMenuBuilder( m_pRightClickMenu, this );
 
-
+	// HOM TODO: lobby host kick
 	// Vote Kick
+	/*
 	if ( sv_vote_issue_kick_allowed.GetBool() && engine->GetLocalPlayer() != playerIndex )
 	{
 		C_TFPlayer* pTFTarget = ToTFPlayer( UTIL_PlayerByIndex( playerIndex ) );
@@ -764,6 +733,7 @@ void CTFClientScoreBoardDialog::OnScoreBoardMouseRightRelease( void )
 			}
 		}
 	}
+	*/
 
 	// Mute
 	if ( !bFakeClient && GetClientVoiceMgr() )

@@ -362,17 +362,15 @@ $Project "Server (TF)"
 			$File	"$SRCDIR\game\shared\tf\tf_robot_destruction_robot.h"
 			$File	"$SRCDIR\game\shared\tf\tf_logic_player_destruction.cpp"
 			$File	"$SRCDIR\game\shared\tf\tf_logic_player_destruction.h"
-			$File	"$SRCDIR\game\server\tf\tf_voteissues.h"
-			$File	"$SRCDIR\game\server\tf\tf_voteissues.cpp"
-			{
-				$Configuration
-				{
-					$Compiler
-					{
-						$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
-					}
-				}
-			}
+			//{
+			//	$Configuration
+			//	{
+			//		$Compiler
+			//		{
+			//			$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
+			//		}
+			//	}
+			//}
 
 			$Folder	"Weapon"
 			{

@@ -498,32 +498,6 @@
 			"wrap"			"1"
 		}
 	}
-	
-	"VoteButton"
-	{
-		"ControlName"	"CExImageButton"
-		"fieldName"		"VoteButton"
-		"xpos"			"c-250"
-		"ypos"			"410"
-		"zpos"			"999"
-		"wide"			"200"
-		"tall"			"25"
-		"autoResize"	"0"
-		"visible"		"1"
-		"enabled"		"1"
-		"tabPosition"	"0"
-		"labelText"		"#TF_PVE_Vote_MissionRestart"
-		"font"			"HudFontSmallBold"
-		"textAlignment"	"center"
-		"dulltext"		"0"
-		"brighttext"	"0"
-		"default"		"1"
-		"sound_depressed"	"UI/buttonclick.wav"
-		"sound_released"	"UI/buttonclickrelease.wav"
-		
-		"image_drawcolor"	"235 226 202 255"
-		"Command"		"vote_restart"
-	}
 		
 	"ContinueButton"
 	{

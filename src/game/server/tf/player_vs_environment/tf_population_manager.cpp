@@ -17,7 +17,6 @@
 #include "tf_upgrades.h"
 #include "tf_item_powerup_bottle.h"
 #include "tf_gc_server.h"
-#include "vote_controller.h"
 #include "tf_gamestats.h"
 #include "tf_gamerules.h"
 #include "econ_item_schema.h"

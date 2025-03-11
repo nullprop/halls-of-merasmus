@@ -746,27 +746,6 @@ bool IsCreepWaveMode( void ) const;
 	int GetGameTeamForGCTeam( TF_GC_TEAM nGCTeam );
 	TF_GC_TEAM GetGCTeamForGameTeam( int nGameTeam );
 
-	enum ENextMapVotingState
-	{
-		NEXT_MAP_VOTE_STATE_NONE,
-		NEXT_MAP_VOTE_STATE_WAITING_FOR_USERS_TO_VOTE,
-		NEXT_MAP_VOTE_STATE_MAP_CHOSEN_PAUSE,
-	};
-
-	enum EUserNextMapVote
-	{
-		USER_NEXT_MAP_VOTE_MAP_0 = 0,
-		USER_NEXT_MAP_VOTE_MAP_1,
-		USER_NEXT_MAP_VOTE_MAP_2,
-		USER_NEXT_MAP_VOTE_UNDECIDED,
-
-		NUM_VOTE_STATES
-	};
-
-	EUserNextMapVote GetWinningVote( int (&nVotes)[ EUserNextMapVote::NUM_VOTE_STATES ] ) const;
-	EUserNextMapVote PlayerNextMapVoteState( int nIndex ) const { return m_ePlayerWantsRematch.Get( nIndex ); }
-	ENextMapVotingState GetCurrentNextMapVotingState() const { return m_eRematchState; }
-	MapDefIndex_t GetNextMapVoteOption( int nIndex ) const { return m_nNextMapVoteOptions.Get( nIndex ); }
 	
 #ifdef GAME_DLL
 	void KickPlayersNewMatchIDRequestFailed();
@@ -950,9 +929,6 @@ bool IsCreepWaveMode( void ) const;
 	void		Arena_NotifyTeamSizeChange( void );
 	float		GetRoundStart( void ) { return m_flRoundStartTime; }
 
-	// Voting
-	void		ManageServerSideVoteCreation( void );
-
 #ifdef TF_RAID_MODE
 	// Raid game mode
 	CRaidLogic	*GetRaidLogic( void ) const		{ return m_hRaidLogic.Get(); }
@@ -966,8 +942,6 @@ bool IsCreepWaveMode( void ) const;
 	virtual bool StopWatchShouldBeTimedWin( void ) OVERRIDE;
 
 public:
-	void SetPlayerNextMapVote( int nIndex, EUserNextMapVote eState ) { m_ePlayerWantsRematch.Set( nIndex, eState ); }
-
 	CTrainingModeLogic *GetTrainingModeLogic() { return m_hTrainingModeLogic; }
 	CTFHolidayEntity *GetHolidayLogic() const { return m_hHolidayLogic; }
 
@@ -1033,8 +1007,6 @@ public:
 
 	int GetTeamAssignmentOverride( CTFPlayer *pTFPlayer, int iDesiredTeam, bool bAutoBalance = false );
 private:
-
-	void ChooseNextMapVoteOptions();
 
 	int DefaultFOV( void ) { return DEFAULT_FOV; }
 	int GetDuckSkinForClass( int nTeam, int nClass ) const;
@@ -1108,11 +1080,6 @@ private:
 	// coaching
 	typedef CUtlMap<uint32, uint32> tCoachToStudentMap;
 	tCoachToStudentMap m_mapCoachToStudentMap;
-
-	// Automatic vote called near the end of a map
-	bool	m_bVoteCalled;
-	bool	m_bServerVoteOnReset;
-	float	m_flVoteCheckThrottle;
 
 	CUtlVector< CHandle< CCPTimerLogic > > m_CPTimerEnts;
 	float	m_flCapInProgressBuffer;
@@ -1223,12 +1190,6 @@ private:
 	CNetworkVar( bool, m_bMapHasMatchSummaryStage );
 	CNetworkVar( bool, m_bPlayersAreOnMatchSummaryStage );
 	CNetworkVar( bool, m_bStopWatchWinner );
-	// This is called m_ePlayerWantsRematch because we initially had rematches, but now we
-	// let players vote on the next map instead.  Can't rename this variable, so we're just
-	// going to use with the wrong name
-	CNetworkArray( EUserNextMapVote, m_ePlayerWantsRematch, MAX_PLAYERS_ARRAY_SAFE );
-	CNetworkVar( ENextMapVotingState, m_eRematchState );
-	CNetworkArray( MapDefIndex_t, m_nNextMapVoteOptions, 3 );
 
 	float		m_flCTFCaptureBonusTime;
 public:
@@ -1414,7 +1375,6 @@ public:
 
 	CUtlVector< Vector > *GetHalloweenSpawnLocations() { return &m_halloweenGiftSpawnLocations; }
 
-	bool BAttemptMapVoteRollingMatch();
 	bool BIsManagedMatchEndImminent( void );
 
 	float CheckPowerupModeDominantDisconnect( CSteamID steamID );

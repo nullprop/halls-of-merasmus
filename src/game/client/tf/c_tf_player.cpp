@@ -6231,12 +6231,6 @@ void C_TFPlayer::AvoidPlayers( CUserCmd *pCmd )
 	C_TFTeam *pTeam = (C_TFTeam*)GetTeam();
 	if ( !pTeam )
 		return;
-	
-	CHudUpgradePanel *pHudVote = GET_HUDELEMENT( CHudUpgradePanel );
-	if ( pHudVote && pHudVote->IsActive() )
-	{
-		return;
-	}
 
 	// Up vector.
 	static Vector vecUp( 0.0f, 0.0f, 1.0f );

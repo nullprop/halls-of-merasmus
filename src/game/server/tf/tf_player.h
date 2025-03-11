@@ -599,7 +599,6 @@ public:
 	CAttributeList			*GetAttributeList( void ) { return &m_AttributeList; }
 	virtual void			ReapplyProvision( void ) { return; }
 
-	CVoteController 		*GetTeamVoteController() OVERRIDE;
 
 protected:
 	CNetworkVarEmbedded( CAttributeContainerPlayer, m_AttributeManager );
@@ -1542,9 +1541,6 @@ public:
 	int m_nMannpowerKills = 0;
 	int m_nMannpowerDeaths = 0;
 	bool m_bMannpowerHereForFullInterval = false;
-
-	virtual bool BCanCallVote() OVERRIDE;
-	bool m_bFirstSpawnAndCanCallVote = false;
 };
 
 //-----------------------------------------------------------------------------

@@ -91,7 +91,6 @@
 
 #include "debugoverlay_shared.h"
 
-#include "hud_vote.h"
 #include "c_tf_notification.h"
 
 #if !defined( _X360 ) && !defined( NO_STEAM )
@@ -1840,7 +1839,6 @@ void ClientModeTFNormal::Update()
 
 	NotificationQueue_Update();
 
-	// CHudVote *pHudVote = GET_HUDELEMENT( CHudVote );
 	// CTFHudMannVsMachineStatus *pMannVsMachineStatus = GET_HUDELEMENT( CTFHudMannVsMachineStatus );
 	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
 

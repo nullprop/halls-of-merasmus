@@ -78,8 +78,6 @@
 	#include "tier3/tier3.h"
 	#include "tf_ammo_pack.h"
 	#include "tf_gcmessages.h"
-	#include "vote_controller.h"
-	#include "tf_voteissues.h"
 	#include "halloween/headless_hatman.h"
 	#include "halloween/ghost/ghost.h"
 	#include "halloween/eyeball_boss/eyeball_boss.h"
@@ -709,7 +707,6 @@ ConVar tf_test_special_ducks( "tf_test_special_ducks", "1", FCVAR_DEVELOPMENTONL
 
 ConVar tf_mm_abandoned_players_per_team_max( "tf_mm_abandoned_players_per_team_max", "1", FCVAR_DEVELOPMENTONLY );
 #endif // GAME_DLL
-ConVar tf_mm_next_map_vote_time( "tf_mm_next_map_vote_time", "30", FCVAR_REPLICATED );
 
 
 static float g_fEternaweenAutodisableTime = 0.0f;
@@ -1437,9 +1434,6 @@ BEGIN_NETWORK_TABLE_NOBASE( CTFGameRules, DT_TFGameRules )
 	RecvPropBool( RECVINFO( m_bMapHasMatchSummaryStage ) ),
 	RecvPropBool( RECVINFO( m_bPlayersAreOnMatchSummaryStage ) ),
 	RecvPropBool( RECVINFO( m_bStopWatchWinner ) ),
-	RecvPropArray3( RECVINFO_ARRAY(m_ePlayerWantsRematch), RecvPropInt( RECVINFO(m_ePlayerWantsRematch[0]), 0, RecvProxy_PlayerVotedForMap ) ),
-	RecvPropInt( RECVINFO( m_eRematchState ) ),
-	RecvPropArray3( RECVINFO_ARRAY(m_nNextMapVoteOptions), RecvPropInt( RECVINFO(m_nNextMapVoteOptions[0]), 0, RecvProxy_NewMapVoteStateChanged ) ),
 
 	RecvPropInt( RECVINFO( m_nForceUpgrades ) ),
 	RecvPropInt( RECVINFO( m_nForceEscortPushLogic ) ),
@@ -1506,9 +1500,6 @@ BEGIN_NETWORK_TABLE_NOBASE( CTFGameRules, DT_TFGameRules )
 	SendPropBool( SENDINFO( m_bMapHasMatchSummaryStage ) ),
 	SendPropBool( SENDINFO( m_bPlayersAreOnMatchSummaryStage ) ),
 	SendPropBool( SENDINFO( m_bStopWatchWinner ) ),
-	SendPropArray3( SENDINFO_ARRAY3(m_ePlayerWantsRematch), SendPropInt( SENDINFO_ARRAY(m_ePlayerWantsRematch), -1, SPROP_UNSIGNED | SPROP_VARINT ) ),
-	SendPropInt( SENDINFO( m_eRematchState ) ),
-	SendPropArray3( SENDINFO_ARRAY3(m_nNextMapVoteOptions), SendPropInt( SENDINFO_ARRAY(m_nNextMapVoteOptions), -1, SPROP_UNSIGNED | SPROP_VARINT ) ),
 
 	SendPropInt( SENDINFO( m_nForceUpgrades ) ),
 	SendPropInt( SENDINFO( m_nForceEscortPushLogic ) ),
@@ -2272,9 +2263,6 @@ bool CTFGameRules::StartManagedMatch()
 		return false;
 	}
 
-	// Cleanup
-	m_eRematchState = NEXT_MAP_VOTE_STATE_NONE;
-
 	/// Sync these before level change, so there's no race condition where clients may connect during/before the
 	/// changelevel and see that the match is ended or wrong.
 	SyncMatchSettings();
@@ -2339,15 +2327,6 @@ void CTFGameRules::StartCompetitiveMatch( void )
 //-----------------------------------------------------------------------------
 void CTFGameRules::StopCompetitiveMatch( CMsgGC_Match_Result_Status nCode )
 {
-	CMatchInfo *pMatch = GTFGCClientSystem()->GetMatch();
-	int nActiveMatchPlayers = pMatch->GetNumActiveMatchPlayers();
-	if ( BAttemptMapVoteRollingMatch() &&
-		nCode == CMsgGC_Match_Result_Status_MATCH_SUCCEEDED &&
-		nActiveMatchPlayers > 0 )
-	{
-		ChooseNextMapVoteOptions();
-	}
-	else
 	{
 		// If we're not attempting a rolling match, end it
 		// TODO ROLLING MATCHES: If we bail between now and RequestNewMatchForLobby, we need to call this or we'll get stuck.
@@ -3425,13 +3404,6 @@ CTFGameRules::CTFGameRules()
 	m_nMatchGroupType.Set( k_eTFMatchGroup_Invalid );
 	m_bMatchEnded.Set( true );
 
-	for ( int i = 1; i <= MAX_PLAYERS; i++ )
-	{
-		m_ePlayerWantsRematch.Set( i, USER_NEXT_MAP_VOTE_UNDECIDED );
-	}
-
-	m_eRematchState = NEXT_MAP_VOTE_STATE_NONE;
-
 #ifdef GAME_DLL
 
 	CMatchInfo *pMatch = GTFGCClientSystem()->GetMatch();
@@ -3757,101 +3729,18 @@ TF_GC_TEAM CTFGameRules::GetGCTeamForGameTeam( int nGameTeam )
 	return TF_GC_TEAM_NOTEAM;
 }
 
-CTFGameRules::EUserNextMapVote CTFGameRules::GetWinningVote( int (&nVotes)[ EUserNextMapVote::NUM_VOTE_STATES ] ) const
-{
-	// We assume "undecided" is the index just after the last vote option
-	COMPILE_TIME_ASSERT( USER_NEXT_MAP_VOTE_UNDECIDED == NEXT_MAP_VOTE_OPTIONS );
-	memset( nVotes, 0, sizeof( nVotes ) );
-	int nTotalPlayers = 0;
-
-	// Tally up votes.  
-	for( int iPlayerIndex = 1 ; iPlayerIndex <= MAX_PLAYERS; iPlayerIndex++ )
-	{
-#ifdef CLIENT_DLL
-
-		if ( !g_PR || !g_PR->IsConnected( iPlayerIndex ) ) 
-			continue;
-
-#else // GAME_DLL
-		// We care about those that are still here.  If you leave, you don't count towards the vote total
-		CTFPlayer *pTFPlayer = ToTFPlayer( UTIL_PlayerByIndex( iPlayerIndex ) );
-		if ( !pTFPlayer || pTFPlayer->IsBot() )
-			continue;
-
-
-		if ( !pTFPlayer->IsConnected() )
-			continue;		
-
-		CSteamID steamID;
-		pTFPlayer->GetSteamID( &steamID );
-
-		// People without parties *should* be getting a new one soon.  Count them as undecided
-		// until their party shows up and they're allowed to make a real vote.
-		CTFParty* pParty = GTFGCClientSystem()->GetPartyForPlayer( steamID );
-		if ( !pParty )
-		{
-			++nVotes[ EUserNextMapVote::USER_NEXT_MAP_VOTE_UNDECIDED ];
-			++nTotalPlayers;
-			continue;
-		}
-
-		const CMatchInfo* pMatch = GTFGCClientSystem()->GetMatch();
-		Assert( pMatch );
-		if ( !pMatch )
-		{
-			continue;
-		}
-
-		// Need to be a match players
-		const CMatchInfo::PlayerMatchData_t* pPlayerMatchData = pMatch->GetMatchDataForPlayer( steamID );
-		Assert( pPlayerMatchData );
-		if ( !pPlayerMatchData )
-		{
-			// How'd you get here?
-			continue;
-		}
-#endif
-
-		nTotalPlayers++;
-		nVotes[ TFGameRules()->PlayerNextMapVoteState( iPlayerIndex ) ]++;
-	}
-
-	if ( nVotes[ USER_NEXT_MAP_VOTE_UNDECIDED ] == nTotalPlayers )
-	{
-		return USER_NEXT_MAP_VOTE_UNDECIDED;
-	}
-	else
-	{
-		EUserNextMapVote eWinningVote = USER_NEXT_MAP_VOTE_MAP_0;
-
-		for( int i = 0; i < NEXT_MAP_VOTE_OPTIONS; ++i )
-		{
-			// The current map is in slot 0.  >= so we favor change.  
-			eWinningVote = nVotes[ i ] >= nVotes[ eWinningVote ] 
-						 ? (EUserNextMapVote)i
-						 : eWinningVote;
-		}
-
-		return eWinningVote;
-	}	
-}
-
 #ifdef GAME_DLL
 void CTFGameRules::KickPlayersNewMatchIDRequestFailed()
 {
-	Assert( m_eRematchState == NEXT_MAP_VOTE_STATE_MAP_CHOSEN_PAUSE );
 
 	// Let everyone know the rematch failed.
-	if ( m_eRematchState == NEXT_MAP_VOTE_STATE_MAP_CHOSEN_PAUSE )
-	{
-		CBroadcastRecipientFilter filter;
-		UTIL_ClientPrintFilter( filter, HUD_PRINTTALK, "#TF_Matchmaking_RollingQueue_NewRematch_GCFail" );
+	CBroadcastRecipientFilter filter;
+	UTIL_ClientPrintFilter( filter, HUD_PRINTTALK, "#TF_Matchmaking_RollingQueue_NewRematch_GCFail" );
 
-		IGameEvent *pEvent = gameeventmanager->CreateEvent( "rematch_failed_to_create" );
-		if ( pEvent )
-		{
-			gameeventmanager->FireEvent( pEvent );
-		}
+	IGameEvent *pEvent = gameeventmanager->CreateEvent( "rematch_failed_to_create" );
+	if ( pEvent )
+	{
+		gameeventmanager->FireEvent( pEvent );
 	}
 
 	// The GC failed to get a new MatchID for us.  Let's clear out and reset.
@@ -4161,7 +4050,6 @@ static const char *s_PreserveEnts[] =
 	"tf_wearable_robot_arm",
 	"tf_wearable_vm",
 	"tf_logic_bonusround",
-	"vote_controller",
 	"monster_resource",
 	"tf_logic_medieval",
 	"tf_logic_cp_timer",
@@ -4420,11 +4308,6 @@ void CTFGameRules::Activate()
 	{
 		hide_server.SetValue( true );
 	}
-
-	m_bVoteCalled = false;
-	m_bServerVoteOnReset = false;
-	m_flVoteCheckThrottle = 0;
-
 
 	if ( tf_powerup_mode.GetBool()  )
 	{
@@ -8025,76 +7908,6 @@ void CTFGameRules::Think()
 				UTIL_ClientPrintFilter( filter, HUD_PRINTTALK, pMatchDesc->GetMatchEndKickWarning(), CFmtStr( "%d", nTimeLeft ) );
 			}
 
-			if ( BAttemptMapVoteRollingMatch() )
-			{
-				const CMatchInfo* pMatch = GTFGCClientSystem()->GetMatch();
-				if ( pMatch && pMatch->GetNumActiveMatchPlayers() == 0 )
-				{
-					Msg( "All players left during next map voting period.  Ending match.\n" );
-					GTFGCClientSystem()->EndManagedMatch();
-					Assert( IsManagedMatchEnded() );
-					m_bMatchEnded.Set( true );
-					return;
-				}
-
-				if ( m_eRematchState == NEXT_MAP_VOTE_STATE_WAITING_FOR_USERS_TO_VOTE )
-				{
-					bool bVotePeriodExpired = false;
-					// Judgment time has arrived.  Force a result below
-					if ( nTimePassed == tf_mm_next_map_vote_time.GetInt() )
-					{
-						bVotePeriodExpired = true;
-					}
-
-					int nVotes[ EUserNextMapVote::NUM_VOTE_STATES ];
-					EUserNextMapVote eWinningVote = GetWinningVote( nVotes );
-
-					if ( bVotePeriodExpired ||
-						( nVotes[ USER_NEXT_MAP_VOTE_UNDECIDED ] == 0 && eWinningVote != USER_NEXT_MAP_VOTE_UNDECIDED ) )
-					{
-						CBroadcastRecipientFilter filter;
-
-						const MapDef_t *pMap = NULL;
-						if ( eWinningVote == USER_NEXT_MAP_VOTE_UNDECIDED )
-						{
-							// Nobody voted!  We're playing on the same map again by default
-							pMap = GetItemSchema()->GetMasterMapDefByName( STRING( gpGlobals->mapname ) );
-							Log( "Nobody voted for the next map.  Defaulting to current map.\n" );
-						}
-						else
-						{
-							pMap = GetItemSchema()->GetMasterMapDefByIndex( GetNextMapVoteOption( eWinningVote ) );
-							if ( pMap )
-							{
-								Log( "Next map vote winner is candidate %d, '%s'\n", (int)eWinningVote, pMap->pszMapName );
-							}
-							else
-							{
-								Log( "Next map vote for candidate %d resulted in invalid map.\n", (int)eWinningVote );
-							}
-						}
-
-						if ( pMap == NULL )
-						{
-							Assert( false );
-							Log( "We didn't pick a new map to rotate to!  Default to the current one, '%s'\n",  STRING( gpGlobals->mapname ) );
-							pMap = GetItemSchema()->GetMasterMapDefByName( STRING( gpGlobals->mapname ) );
-						}
-
-						if ( pMap )
-						{
-							m_eRematchState = NEXT_MAP_VOTE_STATE_MAP_CHOSEN_PAUSE;
-							GTFGCClientSystem()->RequestNewMatchForLobby( pMap );
-							Log( "Next map is '%s'.\n", pMap->pszMapName );
-						}
-					}
-				}
-				else if ( m_eRematchState == NEXT_MAP_VOTE_STATE_MAP_CHOSEN_PAUSE )
-				{
-					// CTFGCServerSystem is in control at this point
-				}
-			}
-
 			if ( gpGlobals->curtime > m_flStateTransitionTime || !BHavePlayers() )
 			{
 				nLastTimeSent = -1;
@@ -8357,13 +8170,6 @@ void CTFGameRules::Think()
 		}
 	}
 #endif // _DEBUG
-
-	// Josh:
-	// This is global because it handles maps and stuff.
-	if ( g_voteControllerGlobal )
-	{
-		ManageServerSideVoteCreation();
-	}
 
 	// ...
 	if ( tf_item_based_forced_holiday.GetInt() == kHoliday_Halloween && engine->Time() >= g_fEternaweenAutodisableTime )
@@ -12009,19 +11815,6 @@ void CTFGameRules::CalcDominationAndRevenge( CTFPlayer *pAttacker, CBaseEntity *
 	}
 }
 
-template< typename TIssue >
-void NewTeamIssue()
-{
-	new TIssue( g_voteControllerRed );
-	new TIssue( g_voteControllerBlu );
-}
-
-template< typename TIssue >
-void NewGlobalIssue()
-{
-	new TIssue( g_voteControllerGlobal );
-}
-
 //-----------------------------------------------------------------------------
 // Purpose: create some proxy entities that we use for transmitting data */
 //-----------------------------------------------------------------------------
@@ -12044,23 +11837,6 @@ void CTFGameRules::CreateStandardEntities()
 	m_hGamerulesProxy = assert_cast<CTFGameRulesProxy*>(CBaseEntity::Create( "tf_gamerules", vec3_origin, vec3_angle ));
 	Assert( m_hGamerulesProxy.Get() );
 	m_hGamerulesProxy->SetName( AllocPooledString("tf_gamerules" ) );
-	
-	g_voteControllerGlobal	=	static_cast< CVoteController *>( CBaseEntity::Create( "vote_controller", vec3_origin, vec3_angle ) );
-	g_voteControllerRed		=	static_cast< CVoteController *>( CBaseEntity::Create( "vote_controller", vec3_origin, vec3_angle ) );
-	g_voteControllerBlu		=	static_cast< CVoteController *>( CBaseEntity::Create( "vote_controller", vec3_origin, vec3_angle ) );
-
-	// Vote Issue classes are handled/cleaned-up by g_voteControllers
-	NewTeamIssue< CKickIssue >();
-	NewGlobalIssue< CRestartGameIssue >();
-	NewGlobalIssue< CChangeLevelIssue >();
-	NewGlobalIssue< CNextLevelIssue >();
-	NewGlobalIssue< CExtendLevelIssue >();
-	NewGlobalIssue< CScrambleTeams >();
-	NewGlobalIssue< CMannVsMachineChangeChallengeIssue >();
-	NewGlobalIssue< CEnableTemporaryHalloweenIssue >();
-	NewGlobalIssue< CTeamAutoBalanceIssue >();
-	NewGlobalIssue< CClassLimitsIssue >();
-	NewGlobalIssue< CPauseGameIssue >();
 }
 
 //-----------------------------------------------------------------------------
@@ -14707,85 +14483,6 @@ void CTFGameRules::LoadMapCycleFileIntoVector( const char *pszMapCycleFile, CUtl
 }
 
 //-----------------------------------------------------------------------------
-// Purpose:  Server-side vote creation
-//-----------------------------------------------------------------------------
-void CTFGameRules::ManageServerSideVoteCreation( void )
-{
-	if ( gpGlobals->curtime < m_flVoteCheckThrottle )
-		return;
-
-	if ( IsInTournamentMode() )
-		return;
-
-	if ( IsInArenaMode() )
-		return;
-
-	if ( IsInWaitingForPlayers() )
-		return;
-
-	if ( m_bInSetup )
-		return;
-
-	if ( IsInTraining() )
-		return;
-
-	if ( IsInItemTestingMode() )
-		return;
-
-	if ( m_MapList.Count() < 2 )
-		return;
-	
-	// Ask players which map they would prefer to play next, based
-	// on "n" lowest playtime from server stats
-
-	ConVarRef sv_vote_issue_nextlevel_allowed( "sv_vote_issue_nextlevel_allowed" );
-	ConVarRef sv_vote_issue_nextlevel_choicesmode( "sv_vote_issue_nextlevel_choicesmode" );
-
-	if ( sv_vote_issue_nextlevel_allowed.GetBool() && sv_vote_issue_nextlevel_choicesmode.GetBool() )
-	{
-		// Don't do this if we already have a nextlevel set
-		if ( nextlevel.GetString() && *nextlevel.GetString() )
-			return;
-
-		if ( !m_bServerVoteOnReset && !m_bVoteCalled )
-		{
-			// If we have any round or win limit, ignore time
-			if ( mp_winlimit.GetInt() || mp_maxrounds.GetInt() )
-			{
-				int nBlueScore = TFTeamMgr()->GetTeam( TF_TEAM_BLUE )->GetScore();
-				int nRedScore = TFTeamMgr()->GetTeam( TF_TEAM_RED)->GetScore();
-				int nWinLimit = mp_winlimit.GetInt();
-				if ( ( nWinLimit - nBlueScore ) == 1 || ( nWinLimit - nRedScore ) == 1 )
-				{
-					m_bServerVoteOnReset = true;
-				}
-
-				int nRoundsPlayed = GetRoundsPlayed();
-				if ( ( mp_maxrounds.GetInt() - nRoundsPlayed ) == 1 )
-				{
-					m_bServerVoteOnReset = true;
-				}
-			}
-			else if ( mp_timelimit.GetInt() > 0 )
-			{
-				int nTimeLeft = GetTimeLeft();
-				if ( nTimeLeft <= 120 && !m_bServerVoteOnReset )
-				{
-					if ( g_voteControllerGlobal )
-					{
-						g_voteControllerGlobal->CreateVote( DEDICATED_SERVER, "nextlevel", "" );
-					}
-					m_bVoteCalled = true;
-				}
-			}
-		}
-	}
-
-	m_flVoteCheckThrottle = gpGlobals->curtime + 0.5f;
-}
-
-
-//-----------------------------------------------------------------------------
 // Purpose: Figures out how much money to put in a custom currency pack drop
 //-----------------------------------------------------------------------------
 int CTFGameRules::CalculateCurrencyAmount_CustomPack( int nAmount )
@@ -15043,17 +14740,6 @@ void CTFGameRules::RoundRespawn( void )
 	if ( !IsInWaitingForPlayers() )
 	{
 		ShowRoundInfoPanel();
-	}
-
-	// We've hit some condition where a server-side vote should be called on respawn
-	if ( m_bServerVoteOnReset )
-	{
-		if ( g_voteControllerGlobal )
-		{
-			g_voteControllerGlobal->CreateVote( DEDICATED_SERVER, "nextlevel", "" );
-		}
-		m_bVoteCalled = true;
-		m_bServerVoteOnReset = false;
 	}
 }
 
@@ -15533,27 +15219,6 @@ void CTFGameRules::PlayHelltowerAnnouncerVO( int iRedLine, int iBlueLine )
 		{
 			flBlueAnnouncerTalkingUntil = 0.00;
 		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: Based on connected match players, chooses the 3 maps players can
-//			vote on as their next map
-//-----------------------------------------------------------------------------
-void CTFGameRules::ChooseNextMapVoteOptions()
-{
-	// Copy chosen maps into the actual fields we're networking to clients
-	for( int i=0; i < NEXT_MAP_VOTE_OPTIONS; ++i )
-	{
-		const MapDef_t* pMap = GTFGCClientSystem()->GetNextMapVoteByIndex( i );
-		if ( !pMap )
-		{
-			Warning( "Invalid NextMap list, substituting current map" );
-			pMap = GetItemSchema()->GetMasterMapDefByName( STRING( gpGlobals->mapname ) );
-		}
-
-		MapDefIndex_t nIndex = pMap ? pMap->m_nDefIndex : 0;
-		m_nNextMapVoteOptions.Set( i, nIndex );
 	}
 }
 
@@ -16176,19 +15841,6 @@ void CTFGameRules::TeamPlayerCountChanged( CTFTeam *pTeam )
 	{
 		m_hGamerulesProxy->TeamPlayerCountChanged( pTeam );
 	}
-}
-
-
-//-----------------------------------------------------------------------------
-// Purpose: Should we attempt to roll into a new match for the current match
-//-----------------------------------------------------------------------------
-bool CTFGameRules::BAttemptMapVoteRollingMatch()
-{
-	if ( IsManagedMatchEnded() )
-		{ return false; }
-
-	const IMatchGroupDescription* pMatchDesc = GetMatchGroupDescription( GetCurrentMatchGroup() );
-	return pMatchDesc && GTFGCClientSystem()->CanRequestNewMatchForLobby() && pMatchDesc->BUsesMapVoteAfterMatchEnds();
 }
 
 //-----------------------------------------------------------------------------
@@ -20326,30 +19978,6 @@ public:
 };
 GC_REG_JOB( GCSDK::CGCClient, CGCCoaching_RemoveCurrentCoach, "CGCCoaching_RemoveCurrentCoach", k_EMsgGCCoaching_RemoveCurrentCoach, GCSDK::k_EServerTypeGCClient );
 
-class CGCUseServerModificationItemJob : public GCSDK::CGCClientJob
-{
-public:
-	CGCUseServerModificationItemJob( GCSDK::CGCClient *pClient ) : GCSDK::CGCClientJob( pClient ) {}
-
-	virtual bool BYieldingRunGCJob( GCSDK::IMsgNetPacket *pNetPacket )
-	{
-		GCSDK::CProtoBufMsg<CMsgGC_GameServer_UseServerModificationItem> msg( pNetPacket );
-
-		// If this server doesn't have the capability to call a vote right now for whatever reason, we
-		// give up and return immediate failure to the GC. If the vote gets called, we'll send up pass/fail
-		// when it finishes.
-		if ( !g_voteControllerGlobal || !g_voteControllerGlobal->CreateVote( DEDICATED_SERVER, "eternaween", "" ) )
-		{
-			GCSDK::CProtoBufMsg<CMsgGC_GameServer_UseServerModificationItem_Response> msgResponse( k_EMsgGC_GameServer_UseServerModificationItem_Response );
-			msgResponse.Body().set_server_response_code( CMsgGC_GameServer_UseServerModificationItem_Response::kServerModificationItemServerResponse_NoVoteCalled );
-			m_pGCClient->BSendMessage( msgResponse );
-		}
-
-		return true;
-	}
-};
-GC_REG_JOB( GCSDK::CGCClient, CGCUseServerModificationItemJob, "CGCUseServerModificationItemJob", k_EMsgGC_GameServer_UseServerModificationItem, GCSDK::k_EServerTypeGCClient );
-
 class CGCUpdateServerModificationItemStateJob : public GCSDK::CGCClientJob
 {
 public:
@@ -21235,13 +20863,6 @@ void CTFGameRules::MatchSummaryTeleport()
 //-----------------------------------------------------------------------------
 void CTFGameRules::MatchSummaryStart( void )
 {
-	if ( BAttemptMapVoteRollingMatch() )
-	{
-		// Grab the final list of maps for users to vote on
-		ChooseNextMapVoteOptions();
-		m_eRematchState = NEXT_MAP_VOTE_STATE_WAITING_FOR_USERS_TO_VOTE;
-	}
-
 	for ( int i = 1; i <= MAX_PLAYERS; i++ )
 	{
 		CBasePlayer *pPlayer = UTIL_PlayerByIndex( i );

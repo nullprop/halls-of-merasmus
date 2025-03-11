@@ -34,7 +34,6 @@
 #include "c_playerresource.h"
 #include "cam_thirdperson.h"
 #include <vgui/ILocalize.h>
-#include "hud_vote.h"
 #include "ienginevgui.h"
 #include "sourcevr/isourcevirtualreality.h"
 #if defined( _X360 )
@@ -74,7 +73,6 @@ extern ConVar replay_rendersetting_renderglow;
 
 class CHudWeaponSelection;
 class CHudChat;
-class CHudVote;
 
 static vgui::HContext s_hVGuiContext = DEFAULT_VGUI_CONTEXT;
 
@@ -695,18 +693,6 @@ int	ClientModeShared::KeyInput( int down, ButtonCode_t keynum, const char *pszCu
 		}
 		return 0;
 	}
-	
-	// If we're voting...
-#ifdef VOTING_ENABLED
-	CHudVote *pHudVote = GET_HUDELEMENT( CHudVote );
-	if ( pHudVote && pHudVote->IsVisible() )
-	{
-		if ( !pHudVote->KeyInput( down, keynum, pszCurrentBinding ) )
-		{
-			return 0;
-		}
-	}
-#endif
 
 	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
 

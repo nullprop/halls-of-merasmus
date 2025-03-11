@@ -20,7 +20,6 @@
 #include "NextBot/NextBotManager.h"
 #include "team_control_point_master.h"
 #include "steamworks_gamestats.h"
-#include "vote_controller.h"
 #include "tf_mann_vs_machine_stats.h"
 
 #include "tf_passtime_logic.h"
@@ -351,9 +350,6 @@ void CTFGameStats::Event_LevelShutdown( float flElapsed )
 		flElapsed = gpGlobals->curtime - m_reportedStats.m_pCurrentGame->m_flRoundStartTime;
 		m_reportedStats.m_pCurrentGame->m_Header.m_iTotalTime += (int) flElapsed;
 	}
-
-	// Store data for the vote system (for issues that present choices based on stats)
-	AccumulateVoteData();
 
 	// add current game data in to data for this level
 	AccumulateGameData();
@@ -1734,28 +1730,6 @@ void CTFGameStats::AccumulateGameData()
 	m_currentMap.Accumulate( game ); // Steamworks stats always accumulate.
 
 	ClearCurrentGameData();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CTFGameStats::AccumulateVoteData( void )
-{
-	if ( !g_voteControllerGlobal || !g_voteControllerRed || !g_voteControllerBlu )
-		return;
-
-	if ( !g_pStringTableServerMapCycle )
-		return;
-
-	// Find the current map and update playtime
-	int iIndex = m_MapsPlaytime.Find( CUtlConstString( STRING( gpGlobals->mapname ) ) );
-	if ( iIndex != m_MapsPlaytime.InvalidIndex() )
-	{
-		TF_Gamestats_LevelStats_t *CurrentGame = m_reportedStats.m_pCurrentGame;
-		//Msg( "%s -- old: %i  ", STRING( gpGlobals->mapname ), m_MapsPlaytime[iIndex] );
-		m_MapsPlaytime[iIndex] += CurrentGame->m_Header.m_iTotalTime;
-		//Msg( "new: %i\n", STRING( gpGlobals->mapname ), m_MapsPlaytime[iIndex] );
-	}
 }
 
 struct MapNameAndPlaytime_t

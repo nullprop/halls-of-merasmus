@@ -87,7 +87,6 @@ class CFuncLadder;
 class CNavArea;
 class CHintSystem;
 class CAI_Expresser;
-class CVoteController;
 
 #if defined USES_ECON_ITEMS
 class CEconWearable;
@@ -478,10 +477,6 @@ public:
 
 	void					NotifySinglePlayerGameEnding() { m_bSinglePlayerGameEnding = true; }
 	bool					IsSinglePlayerGameEnding() { return m_bSinglePlayerGameEnding == true; }
-
-	bool					HandleVoteCommands( const CCommand &args );
-
-	virtual CVoteController *GetTeamVoteController();
 	
 	// Observer functions
 	virtual bool			StartObserverMode(int mode); // true, if successful

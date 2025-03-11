@@ -96,7 +96,6 @@ public:
 	bool IsRealGameplay( TF_Gamestats_LevelStats_t *game );
 
 	void AccumulateGameData();
-	void AccumulateVoteData( void );
 	bool GetVoteData( const char *szIssueName, int nNumOptions, CUtlVector <const char*> &vecNames );
 	
 	void ClearCurrentGameData();

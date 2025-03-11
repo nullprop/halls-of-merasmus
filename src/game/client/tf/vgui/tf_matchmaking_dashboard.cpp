@@ -383,8 +383,6 @@ void CTFMatchmakingDashboard::OnCommand( const char *command )
 		return;
 		PopStack( 100, k_eSideRight ); // All y'all
 		PushSlidePanel( GetDashboardPanel().GetTypedPanel< CMatchMakingDashboardSidePanel >( k_ePlayList ) );
-		CHudMainMenuOverride *pMMOverride = (CHudMainMenuOverride*)( gViewPortInterface->FindPanelByName( PANEL_MAINMENUOVERRIDE ) );
-		pMMOverride->CheckTrainingStatus();
 	}
 	else if ( FStrEq( command, "quit" ) )
 	{
@@ -571,9 +569,7 @@ void CTFMatchmakingDashboard::OnTick()
 	// Update the Y-Pos of all the "children" of the dashboard
 	{
 		// These are the panels that dangle off the topbar
-		EMMDashboadSidePanel arPanelsDanglingOffTopBar[] =	{ k_eChat
-															, k_eNextMapWinnerPopup
-															, k_eNextMapVotePopup };
+		EMMDashboadSidePanel arPanelsDanglingOffTopBar[] =	{ k_eChat };
 
 		int nNewYPos = Max( GetYPos() + GetTall() - YRES(10), YRES(-5) );
 		for( int i=0; i < ARRAYSIZE( arPanelsDanglingOffTopBar ); ++i )

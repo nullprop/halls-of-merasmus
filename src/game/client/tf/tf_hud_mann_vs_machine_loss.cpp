@@ -38,7 +38,6 @@ CMvMWaveLossPanel::CMvMWaveLossPanel( Panel *parent, const char *pName ) : vgui:
 	MakePopup();
 	MoveToFront();
 
-	m_pVoteButton = new CExImageButton( this, "VoteButton", g_pVGuiLocalize->Find( "#TF_PVE_Vote_MissionRestart" ), this );
 	m_pCloseButton = new CExImageButton( this, "ContinueButton", g_pVGuiLocalize->Find( "#ConfirmButtonText" ), this );
 
 	m_pHintContainer = NULL;
@@ -135,13 +134,7 @@ void CMvMWaveLossPanel::OnTick( void )
 //-----------------------------------------------------------------------------
 void CMvMWaveLossPanel::OnCommand( const char *command )
 {
-	if ( !Q_stricmp( command, "vote_restart" ) )
-	{
-		engine->ClientCmd( "callvote RestartGame;" );
-		SetMouseInputEnabled( false );
-		SetVisible( false );
-	}
-	else if ( !Q_stricmp( command, "continue" )  )
+	if ( !Q_stricmp( command, "continue" )  )
 	{
 		SetMouseInputEnabled( false );
 		SetVisible( false );

@@ -67,7 +67,6 @@
 #include "gameinterface.h"
 #include "hl2orange.spa.h"
 #include "dt_utlvector_send.h"
-#include "vote_controller.h"
 #include "ai_speech.h"
 
 #if defined USES_ECON_ITEMS
@@ -6548,10 +6547,6 @@ bool CBasePlayer::ClientCommand( const CCommand &args )
 			return true;
 		}
 	}
-	else if ( HandleVoteCommands( args ) )
-	{
-		return true;
-	}
 	else if ( stricmp( cmd, "spectate" ) == 0 ) // join spectator team & start observer mode
 	{
 		if ( GetTeamNumber() == TEAM_SPECTATOR )
@@ -9016,103 +9011,6 @@ bool CBasePlayer::HasAnyAmmoOfType( int nAmmoIndex )
 	}	
 
 	// We're completely without this type of ammo
-	return false;
-}
-
-CVoteController *CBasePlayer::GetTeamVoteController()
-{
-	return g_voteControllerGlobal;
-}
-
-bool CBasePlayer::HandleVoteCommands( const CCommand &args )
-{
-	if( !g_voteControllerGlobal && !GetTeamVoteController()  )
-		return false;
-
-	if(  FStrEq( args[0], "Vote" ) )
-	{
-		if( args.ArgC() < 3 )
-			return true;
-
-		const char *pszVoteIdx = args[1];
-		int nVoteIdx = V_atoi( pszVoteIdx );
-
-		const char *arg2 = args[2];
-		char szResultString[MAX_COMMAND_LENGTH];
-
-		CVoteController *pVoteController = NULL;
-
-		// Is there a global or team vote to participate in and if so, which?
-		if ( g_voteControllerGlobal && g_voteControllerGlobal->IsAVoteInProgress() && g_voteControllerGlobal->GetVoteID() == nVoteIdx )
-		{
-			pVoteController = g_voteControllerGlobal;
-		}
-		else if ( GetTeamVoteController() && GetTeamVoteController()->IsAVoteInProgress() && GetTeamVoteController()->GetVoteID() == nVoteIdx )
-		{
-			pVoteController = GetTeamVoteController();
-		}
-		else
-		{
-			Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: no vote with ID %d in progress.\n", nVoteIdx );
-			DevMsg( "%s", szResultString );
-
-			return true;
-		}
-
-		if ( !pVoteController )
-			return true;
-
-		CVoteController::TryCastVoteResult nTryResult = pVoteController->TryCastVote( entindex(), arg2 );
-		switch( nTryResult )
-		{
-		case CVoteController::CAST_OK:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Voting %s.\n", arg2 );
-				break;
-			}
-		case CVoteController::CAST_FAIL_SERVER_DISABLE:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: server disabled.\n" );
-				break;
-			}
-		case CVoteController::CAST_FAIL_NO_ACTIVE_ISSUE:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "A vote has not been called.\n" );
-				break;
-			}
-		case CVoteController::CAST_FAIL_TEAM_RESTRICTED:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: team restricted.\n" );
-				break;
-			}
-		case CVoteController::CAST_FAIL_NO_CHANGES:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: no changing vote.\n" );
-				break;
-			}
-		case CVoteController::CAST_FAIL_DUPLICATE:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: already voting %s.\n", arg2 );
-				break;
-			}
-		case CVoteController::CAST_FAIL_VOTE_CLOSED:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: voting closed.\n" );
-				break;
-			}
-		case CVoteController::CAST_FAIL_SYSTEM_ERROR:
-		default:
-			{
-				Q_snprintf( szResultString, MAX_COMMAND_LENGTH, "Vote failed: system error.\n" );
-				break;
-			}
-		}
-
-		DevMsg( "%s", szResultString );		
-
-		return true;
-	}
-
 	return false;
 }
 

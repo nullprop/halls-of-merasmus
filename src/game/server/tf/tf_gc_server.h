@@ -21,7 +21,6 @@
 #include "tf_shareddefs.h"
 #include "tf_gc_shared.h"
 #include "tf_lobby_shared.h"
-#include "vote_controller.h"
 
 class CTFGSLobby;
 class CTFParty;
@@ -103,10 +102,6 @@ public:
 			, bDropped( false )
 			, bConnected( false )
 			, rtJoinedMatch( CRTime::RTime32TimeCur() )
-			, bPendingVoteKickRequest( false )
-			, bCannotCallVoteKicks( false )
-			, bCannotBeTargetedByVoteKicks( false )
-			, nVoteKickAttempts( 0 )
 			, nDisconnectedSeconds( 0 )
 			, nScoreMedal( 0 )
 			, nKillsMedal( 0 )
@@ -123,7 +118,6 @@ public:
 			, nRank( memberData.GetRank() )
 			, unClassesPlayed( 0u )
 			, bChatSuspension( memberData.GetChatSuspension() )
-			, bVoteKickPending( false )
 			, rtLastActiveEvent( CRTime::RTime32TimeCur() )
 			, bAlwaysSafeToLeave( false )
 			, bDropWasAbandon( false )
@@ -147,14 +141,6 @@ public:
 		// Timestamp player joined the match at. Not guaranteed to be the same instant the match was created, depending
 		// on how the GC does things.
 		RTime32 rtJoinedMatch;
-
-		uint32 nVoteKickAttempts;
-		// A message is in queue on this player's behalf to start a kick
-		bool bPendingVoteKickRequest;
-		// Not allowed to start further kicks
-		bool bCannotCallVoteKicks;
-		// Not allowed to be the target of kicks
-		bool bCannotBeTargetedByVoteKicks;
 
 		// Number of cumulative seconds the player has been absent, *not* including the initial connect timeout.  Used
 		// to determine when to award an abandon.  We may do odd things like "comp" you some seconds on a second, later,
@@ -184,9 +170,6 @@ public:
 
 		// Chat suspension on player
 		bool bChatSuspension;
-		// Whether they have a vote kick
-		// determined by the GC pending.
-		bool bVoteKickPending;
 
 		const CMsgTFXPSourceBreakdown& GetXPSources() const { return m_XPBreakdown; }
 
@@ -346,8 +329,6 @@ class CTFGCServerSystem : public CGCClientSystem, public GCSDK::ISharedObjectLis
 	// Messages that need to do callbacks
 	friend class ReliableMsgNewMatchForLobby;
 	friend class ReliableMsgChangeMatchPlayerTeams;
-	friend class ReliableMsgVoteKickPlayerRequest;
-	friend class ReliableMsgProcessMatchVoteKick;
 public:
 	CTFGCServerSystem( void );
 	~CTFGCServerSystem( void );
@@ -403,29 +384,6 @@ public:
 //	bool IsLobbyMemberBroadcaster( const CSteamID &steamId ) const;
 //	ELanguage GetBroadcasterLanguage( const CSteamID &steamId ) const;
 	float GetFirstConnectTimeForLobbyMember( const CSteamID &steamId ) const;
-	int GetVoteKickAttemptsByLobbyMember( const CSteamID &steamID ) const;
-	void IncrementVoteKickAttemptsByLobbyMember( const CSteamID &steamID );
-
-	// Called by the vote system when someone asks to perform a votekick.
-	//
-	// This function can return 'Handled' which means it will go talk to the GC and then submit the request back to the
-	// vote system when it has more data.
-	enum EVoteKickRequest {
-		eVoteKick_Allow,  // -> Clear to perform a votekick
-		eVoteKick_Deny,   // -> Tell them no
-		eVoteKick_Handled // -> We'll take it from here (e.g. need to go talk to the GC, we'll start a vote or tell them no
-		                  //    later when that resolves)
-	};
-	EVoteKickRequest PlayerRequestVoteKick( const CSteamID &steamID, const CSteamID &steamIDKickTarget, TFVoteKickReason eReason );
-
-	// Submit votekick results from the vote system (which should have gotten permission via PlayerRequestVoteKick)
-	void SubmitVoteKickResults( CSteamID steamIDInitiator, CSteamID steamIDTarget, TFVoteKickReason eReason,
-	                            const CUtlMap<CSteamID, int> &mapVotesBySteamID, bool bDefaultPass );
-	// If true, results of a vote kick were submitted and we're working on it.
-	bool BVoteKickPending( CSteamID steamIDTarget ) const;
-	// Was this player in the match, and then votekicked?  This is true even if they left and then were subsequently
-	// upgraded to kicked.
-	bool BPlayerWasVoteKicked( CSteamID steamID ) const;
 //
 //	EDOTA_Uploading_Match_Stats UploadingMatchStats() { return m_nUploadingMatchStats; }
 //	void OnStatsSubmitted( uint32 unMatchID, int32 nReplaySalt );
@@ -463,10 +421,6 @@ public:
 
 	// Eject a player from the match, kicking them if they are still present, with given reason.
 	bool EjectMatchPlayer( CSteamID steamID, TFMatchLeaveReason eReason );
-
-	void MatchPlayerVoteKicked( CSteamID steamID );
-
-	const MapDef_t* GetNextMapVoteByIndex( int nIndex ) const;
 
 	// Changing Match Player Teams
 	//
@@ -549,14 +503,7 @@ private:
 	void ChangeMatchPlayerTeamsResponse( bool bSuccess );
 	bool CanKickPlayer( CTFPlayer *pVoterPlayer, CTFPlayer *pTargetPlayer );
 	bool CanKickPlayerMvM( CTFPlayer *pVoterPlayer, CTFPlayer *pTargetPlayer );
-	void VoteKickPlayerRequestResponse( CSteamID voterSteamID,
-	                                    CSteamID targetSteamID,
-	                                    TFVoteKickReason eReason,
-	                                    bool bAllowed,         // Can this votekick proceed
-	                                    bool bVoterInhibit,    // Should voter be inhibited from further attempts
-	                                    bool bTargetInhibit ); // Should target be inhibited from further attempts
-	                                                           // against
-	void ProcessMatchVoteKickResponse( CSteamID voterSteamID, CSteamID targetSteamID, bool bSucceeded );
+	
 	void NewMatchForLobbyResponse( bool bSuccess );
 	// Static callbacks that are just forwarding to us
 	static void ChangeMatchPlayerTeamsResponseCallback( GCSDK::CProtoBufMsg<CMsgGCChangeMatchPlayerTeamsResponse>& msg );
@@ -588,7 +535,6 @@ private:
 	bool m_bOverridingVisibleMaxPlayers;
 	bool m_bWaitingForNewMatchID;
 	float m_flWaitingForNewMatchTime;
-	bool m_bCreatingVoteKick = false;
 
 	CMvMVictoryInfo m_mvmVictoryInfo;
 

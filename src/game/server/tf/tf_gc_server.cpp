@@ -21,7 +21,6 @@
 #include "tf_mann_vs_machine_stats.h"
 #include "tf_objective_resource.h"
 #include "tf_player.h"
-#include "tf_voteissues.h"
 #include "player_vs_environment/tf_population_manager.h"
 #include "quest_objective_manager.h"
 #include "player_resource.h"
@@ -366,54 +365,6 @@ public:
 	                                                            CSteamID( Msg().Body().steam_id() ).Render(),
 	                                                            (unsigned long long) Msg().Body().match_id(),
 																(unsigned long long) Msg().Body().lobby_id() ); }
-};
-
-//-----------------------------------------------------------------------------
-class ReliableMsgVoteKickPlayerRequest
-	: public CJobReliableMessageBase < ReliableMsgVoteKickPlayerRequest,
-	                                   CMsgGC_TFVoteKickPlayerRequest,       k_EMsgGCVoteKickPlayerRequest,
-	                                   CMsgGC_VoteKickPlayerRequestResponse, k_EMsgGCVoteKickPlayerRequestResponse >
-{
-public:
-	// May have been queued for a pending match
-	void OnPrepare() { Msg().Body().set_match_id( ReliableMsgCheckUpdateMatchID( Msg().Body().match_id() ) ); }
-	void OnReply( Reply_t &msgReply )
-	{
-		GTFGCClientSystem()->VoteKickPlayerRequestResponse( CSteamID( Msg().Body().voter_id() ),
-		                                                    CSteamID( Msg().Body().target_id() ),
-		                                                    Msg().Body().reason(),
-		                                                    msgReply.Body().allowed(),
-		                                                    msgReply.Body().voter_inhibit(),
-		                                                    msgReply.Body().target_inhibit() );
-	}
-	const char *MsgName() { return "VoteKickPlayerRequest"; }
-	void InitDebugString( CUtlString &dbgStr ) { dbgStr.Format( "Player %s, Target %s, Match %llx",
-	                                                            CSteamID( Msg().Body().voter_id() ).Render(),
-	                                                            CSteamID( Msg().Body().target_id() ).Render(),
-	                                                            (unsigned long long) Msg().Body().match_id() ); }
-};
-
-//-----------------------------------------------------------------------------
-class ReliableMsgProcessMatchVoteKick
-	: public CJobReliableMessageBase < ReliableMsgProcessMatchVoteKick,
-	                                   CMsgProcessMatchVoteKick,         k_EMsgGC_ProcessMatchVoteKick,
-	                                   CMsgProcessMatchVoteKickResponse, k_EMsgGC_ProcessMatchVoteKickResponse >
-{
-public:
-	// May have been queued for a pending match
-	void OnPrepare() { Msg().Body().set_match_id( ReliableMsgCheckUpdateMatchID( Msg().Body().match_id() ) ); }
-	void OnReply( Reply_t &msgReply )
-	{
-		GTFGCClientSystem()->ProcessMatchVoteKickResponse( CSteamID( Msg().Body().initiator_steam_id() ),
-		                                                   CSteamID( Msg().Body().target_steam_id() ),
-		                                                   msgReply.Body().rip() );
-	}
-	const char *MsgName() { return "ProcessMatchVoteKick"; }
-	void InitDebugString( CUtlString &dbgStr ) { dbgStr.Format( "Player %s, Target %s, Match %llx, %d votes",
-	                                                            CSteamID( Msg().Body().initiator_steam_id() ).Render(),
-	                                                            CSteamID( Msg().Body().target_steam_id() ).Render(),
-	                                                            (unsigned long long) Msg().Body().match_id(),
-	                                                            Msg().Body().votes_size() ); }
 };
 
 //-----------------------------------------------------------------------------
@@ -1416,14 +1367,6 @@ void CTFGCServerSystem::ClientDisconnected( CSteamID steamIDClient )
 
 	GetGCClient()->RemoveSOCacheListener( steamIDClient, this );
 
-	// This is here because ClientDisconnected code is not called on gamerules or player
-	// when the game is in state g_fGameOver.  See CServerGameClients::ClientDisconnect.
-	CBasePlayer* pPlayer = UTIL_PlayerBySteamID( steamIDClient );
-	if ( TFGameRules() && pPlayer )
-	{
-		TFGameRules()->SetPlayerNextMapVote( pPlayer->entindex(), CTFGameRules::USER_NEXT_MAP_VOTE_UNDECIDED );
-	}
-
 	CMatchInfo *pMatch = GetMatch();
 	CMatchInfo::PlayerMatchData_t *pMatchPlayer = pMatch ? pMatch->GetMatchDataForPlayer( steamIDClient ) : NULL;
 	if ( !pMatchPlayer )
@@ -1685,153 +1628,6 @@ void CTFGCServerSystem::MatchPlayerAbandonThink()
 }
 
 //-----------------------------------------------------------------------------
-CTFGCServerSystem::EVoteKickRequest CTFGCServerSystem::PlayerRequestVoteKick( const CSteamID &steamID,
-                                                                              const CSteamID &steamIDKickTarget,
-                                                                              TFVoteKickReason eReason )
-{
-	// Flag we set when we submit a vote kick back to the vote system ourselves
-	if ( m_bCreatingVoteKick )
-		{ return eVoteKick_Allow; }
-
-	// Otherwise, do a permission check
-
-	CMatchInfo *pMatch = GetLiveMatch();
-	if ( !pMatch )
-	{
-		Assert( false );
-		return eVoteKick_Allow;
-	}
-
-	if ( BVoteKickPending( steamIDKickTarget ) )
-	{
-		// The vote system already submitted one to us, and we've not responded, so it shouldn't be sending down more
-		// requests
-		Assert( false );
-		return eVoteKick_Deny;
-	}
-
-	CMatchInfo::PlayerMatchData_t *pVoter = GetLiveMatchPlayer( steamID );
-	CMatchInfo::PlayerMatchData_t *pTarget = GetLiveMatchPlayer( steamIDKickTarget );
-
-	if ( !pVoter || !pTarget )
-	{
-		// In the case of ad-hoc players, we always allow the request.  We will still inform the GC of the results if
-		// the target was a match player.  The GC doesn't generally apply any additional rules to mixed ad-hoc matches.
-		MMLog( "Allowing vote-kick involving ad-hoc players\n" );
-		return eVoteKick_Allow;
-	}
-
-	// Voter or target blocked?
-	if ( pVoter->bCannotBeTargetedByVoteKicks || pTarget->bCannotBeTargetedByVoteKicks )
-		{ return eVoteKick_Deny; }
-
-	if ( pVoter->bPendingVoteKickRequest )
-	{
-		// Vote system shouldn't be allowing rapid-fire requests, but just give them the rate-limit error if we haven't
-		// heard back
-		return eVoteKick_Deny;
-	}
-
-	// Queue request
-	pVoter->bPendingVoteKickRequest = true;
-
-	auto *pReliable = new ReliableMsgVoteKickPlayerRequest();
-	auto &msg = pReliable->Msg().Body();
-
-	msg.set_voter_id( steamID.ConvertToUint64() );
-	msg.set_target_id( steamIDKickTarget.ConvertToUint64() );
-	msg.set_match_id( pMatch->m_nMatchID );
-	msg.set_reason( eReason );
-
-	ReliableMsgQueue().Enqueue( pReliable );
-
-	// Tell the system we handled this request (we'll re-issue it later based on GC response)
-	return eVoteKick_Handled;
-}
-
-//-----------------------------------------------------------------------------
-void CTFGCServerSystem::SubmitVoteKickResults( CSteamID steamIDInitiator,
-                                               CSteamID steamIDTarget,
-                                               TFVoteKickReason eReason,
-                                               const CUtlMap<CSteamID, int> &mapVotesBySteamID,
-                                               bool bDefaultPass )
-{
-	CMatchInfo *pMatch = GetLiveMatch();
-	if ( !pMatch )
-	{
-		Assert( false );
-		return;
-	}
-
-	CMatchInfo::PlayerMatchData_t *pTarget = pMatch->GetMatchDataForPlayer( steamIDTarget );
-	if ( !pTarget )
-	{
-		Assert( false );
-		return;
-	}
-
-	if ( pTarget->bVoteKickPending )
-	{
-		Assert( !pTarget->bVoteKickPending );
-		return;
-	}
-
-	// Throw a message in queue.  Note that the target may have left the match -- this is fine, we still want the GC to
-	// update its view of them to consider them kicked so they cannot rejoin.
-	pTarget->bVoteKickPending = true;
-
-	auto *pReliable = new ReliableMsgProcessMatchVoteKick();
-	CMsgProcessMatchVoteKick &msg = pReliable->Msg().Body();
-
-	msg.set_target_steam_id( steamIDTarget.ConvertToUint64() );
-	msg.set_reason( eReason );
-	msg.set_initiator_steam_id( steamIDInitiator.ConvertToUint64() );
-	msg.set_match_id( pMatch->m_nMatchID );
-	msg.set_default_pass( bDefaultPass );
-
-	// Add votes
-	FOR_EACH_MAP_FAST( mapVotesBySteamID, idx )
-	{
-		CSteamID steamID = mapVotesBySteamID.Key( idx );
-		bool bYay = ( mapVotesBySteamID[idx] == VOTE_YES );
-
-		CMsgProcessMatchVoteKick_Vote *vote = msg.add_votes();
-		vote->set_steam_id( steamID.ConvertToUint64() );
-		vote->set_vote_yay( bYay );
-	}
-
-	ReliableMsgQueue().Enqueue( pReliable );
-
-	pTarget->bVoteKickPending = true;
-}
-
-//-----------------------------------------------------------------------------
-bool CTFGCServerSystem::BVoteKickPending( CSteamID steamIDTarget ) const
-{
-	const CMatchInfo::PlayerMatchData_t *pTarget = GetLiveMatchPlayer( steamIDTarget );
-	if ( !pTarget )
-	{
-		Assert( false );
-		return false;
-	}
-
-	return pTarget->bVoteKickPending;
-}
-
-//-----------------------------------------------------------------------------
-bool CTFGCServerSystem::BPlayerWasVoteKicked( CSteamID steamID ) const
-{
-	// Check if player is in our match record as dropped with reason votekick
-	const CMatchInfo *pMatch = GetMatch();
-	if ( !pMatch ) {
-		return false;
-	}
-
-	const CMatchInfo::PlayerMatchData_t *pMatchPlayer = pMatch->GetMatchDataForPlayer( steamID );
-	return ( pMatchPlayer && pMatchPlayer->bDropped && ( pMatchPlayer->eDropReason == TFMatchLeaveReason_VOTE_KICK || pMatchPlayer->eDropReason == TFMatchLeaveReason_GC_REMOVED ) );
-}
-
-//-----------------------------------------------------------------------------
 bool CTFGCServerSystem::EjectMatchPlayer( CSteamID steamID, TFMatchLeaveReason eReason )
 {
 	CMatchInfo *pMatch = GetLiveMatch();
@@ -1949,187 +1745,6 @@ void CTFGCServerSystem::ChangeMatchPlayerTeamsResponse( bool bSuccess )
 		return;
 	}
 	MMLog( "ChangeMatchPlayerTeams acknowledged\n" );
-}
-
-//-----------------------------------------------------------------------------
-extern ConVar sv_vote_issue_kick_spectators_mvm;
-
-bool CTFGCServerSystem::CanKickPlayer( CTFPlayer *pVoterPlayer, CTFPlayer *pTargetPlayer )
-{
-	Assert( pVoterPlayer->GetTeamVoteController() == pTargetPlayer->GetTeamVoteController() );
-
-	if ( pVoterPlayer->GetTeamVoteController() != pTargetPlayer->GetTeamVoteController() )
-	{
-		MMLog( "[TF Vote GC] Disallowing player to kick target due to having differing team vote controllers.\n" );
-		return false;
-	}
-
-	return true;
-}
-
-bool CTFGCServerSystem::CanKickPlayerMvM( CTFPlayer *pVoterPlayer, CTFPlayer *pTargetPlayer )
-{
-	// Josh: Mirrors logic in tf_voteissues.cpp
-
-	// Allow kicking team unassigned
-	if ( pTargetPlayer->IsConnected() && pTargetPlayer->GetTeamNumber() == TEAM_UNASSIGNED )
-	{
-		MMLog("[TF Vote GC] Allowing player to be kicked as they are connected & TEAM_UNASSIGNED.\n");
-		return true;
-	}
-
-	// Allow kicking of spectators when this is set, except when it's a bot (invader bots are spectators between rounds)
-	if ( sv_vote_issue_kick_spectators_mvm.GetBool() && !pTargetPlayer->IsBot() && pTargetPlayer->GetTeamNumber() == TEAM_SPECTATOR )
-	{
-		MMLog( "[TF Vote GC] Allowing kick of player as they are TEAM_SPECTATOR.\n" );
-		return true;
-	}
-
-	return CanKickPlayer( pVoterPlayer, pTargetPlayer );
-}
-
-void CTFGCServerSystem::VoteKickPlayerRequestResponse( CSteamID voterSteamID, CSteamID targetSteamID,
-                                                       TFVoteKickReason eReason, bool bAllowed,
-                                                       bool bVoterInhibit, bool bTargetInhibit )
-{
-	auto *pMatch = GetLiveMatch();
-	if ( !pMatch )
-		{ return; }
-
-	CMatchInfo::PlayerMatchData_t *pVoter = pMatch->GetMatchDataForPlayer( voterSteamID );
-	CMatchInfo::PlayerMatchData_t *pTarget = pMatch->GetMatchDataForPlayer( targetSteamID );
-
-	// Clear flag even if they since dropped
-	if ( pVoter )
-	{
-		Assert( pVoter->bPendingVoteKickRequest );
-		pVoter->bPendingVoteKickRequest = false;
-	}
-
-	// Propagate these so we know not to check in the future
-	if ( pVoter && bVoterInhibit )
-		{ pVoter->bCannotCallVoteKicks = true; }
-
-	if ( pTarget && bTargetInhibit )
-		{ pTarget->bCannotBeTargetedByVoteKicks = true; }
-
-	// No longer relevant if target or voter dropped out
-	if ( !pVoter || !pTarget || pVoter->bDropped || pTarget->bDropped )
-		{ return; }
-
-	// Right now we can only start a kick in the vote system when both are active (but this could be fixed)
-	CTFPlayer *pVoterPlayer  = ToTFPlayer( UTIL_PlayerBySteamID( voterSteamID ) );
-	CTFPlayer *pTargetPlayer = ToTFPlayer( UTIL_PlayerBySteamID( targetSteamID ) );
-	if ( !pTargetPlayer || !pVoterPlayer )
-		{ return; }
-
-
-	if ( TFGameRules() && TFGameRules()->IsMannVsMachineMode() )
-	{
-		if ( !CanKickPlayerMvM( pVoterPlayer, pTargetPlayer ) )
-			return;
-	}
-	else
-	{
-		if ( !CanKickPlayer( pVoterPlayer, pTargetPlayer ) )
-			return;
-	}
-
-	CVoteController *pVoteController = pVoterPlayer->GetTeamVoteController();
-	Assert( pVoteController );
-
-	// If allowed, start a kick (even if we just inhibited future attempts)
-	if ( bAllowed )
-	{
-		bool bCreated = false;
-		if ( pVoteController )
-		{
-			const char *pszReason = CKickIssue::KickReasonString( eReason );
-			int targetuserid = pTargetPlayer->GetUserID();
-			int voterentindex = pVoterPlayer->entindex();
-			// Set flag so that we answer in the affirmative when the vote controller asks for permission for this vote.
-			//
-			// Ugly, but I'm not re-doing the vote controller API right now to let us pass other data down to the issue.
-			m_bCreatingVoteKick = true;
-			bCreated = pVoteController->CreateVote( voterentindex, "Kick",
-			                                         UTIL_VarArgs( "%d %s", targetuserid, pszReason ) );
-			m_bCreatingVoteKick = false;
-		}
-
-		if ( bCreated )
-		{
-			MMLog( "Match system approved vote kick of %s by %s, started vote\n",
-			       targetSteamID.Render(), voterSteamID.Render() );
-		}
-		else
-		{
-			MMLog( "Match system approved vote kick of %s by %s, but vote system is not available\n",
-			       targetSteamID.Render(), voterSteamID.Render() );
-		}
-	}
-	else
-	{
-		// Unless another vote started while we were waiting, send them an out-of-band deny popup
-		if ( pVoterPlayer && pVoteController && !pVoteController->IsVoteActive() )
-		{
-			pVoteController->SendVoteCreationFailedMessage( VOTE_FAILED_KICK_DENIED_BY_GC, pVoterPlayer );
-		}
-		MMLog( "Match system denied vote kick of %s by %s\n", targetSteamID.Render(), voterSteamID.Render() );
-	}
-}
-
-//-----------------------------------------------------------------------------
-void CTFGCServerSystem::ProcessMatchVoteKickResponse( CSteamID voterSteamID, CSteamID targetSteamID, bool bSucceeded )
-{
-	CMatchInfo *pMatch = GetLiveMatch();
-	if ( !pMatch )
-	{
-		Assert( false );
-		return;
-	}
-
-	CMatchInfo::PlayerMatchData_t *pPlayer = pMatch->GetMatchDataForPlayer( targetSteamID );
-	if ( pPlayer )
-	{
-		Assert( pPlayer->bVoteKickPending );
-		pPlayer->bVoteKickPending = false;
-	}
-
-	if ( bSucceeded )
-	{
-		MMLog( "Vote kick succeeded against %s\n", targetSteamID.Render() );
-		bool bEjected = EjectMatchPlayer( targetSteamID, TFMatchLeaveReason_VOTE_KICK );
-		if ( bEjected )
-		{
-			// Was part of our match, handled.
-			MMLog( "Player %s vote-kicked from live match\n", targetSteamID.Render() );
-			return;
-		}
-
-		// Not part of our match, check if they used to be
-		if ( !pPlayer || ( pPlayer && !pPlayer->bDropped ) )
-		{
-			AssertMsg( !pPlayer || pPlayer->bDropped,
-			           "Player is still part of our match, so EjectMatchPlayer should have succeeded" );
-		}
-		return;
-	}
-
-	MMLog( "Vote kick failed against %s\n", targetSteamID.Render() );
-}
-
-//-----------------------------------------------------------------------------
-const MapDef_t* CTFGCServerSystem::GetNextMapVoteByIndex( int nIndex ) const
-{
-	const CTFGSLobby *pLobby = GetLobby();
-	if ( pLobby && nIndex < pLobby->Obj().next_maps_for_vote_size() )
-	{
-		return GetItemSchema()->GetMasterMapDefByIndex( pLobby->Obj().next_maps_for_vote( nIndex ) );
-	}
-
-	Assert( false );
-	Warning( "GetNextMapVoteByIndex: Bad lobby next maps list" );
-	return GetItemSchema()->GetMasterMapDefByName( "ctf_2fort" );
 }
 
 //-----------------------------------------------------------------------------
@@ -2287,7 +1902,7 @@ void CTFGCServerSystem::FireGameEvent( IGameEvent *event )
 	if ( !Q_stricmp( event->GetName(), "player_disconnect" ) )
 	{
 		const char * pszReason = event->GetString( "reason", "" );
-		if ( Q_strstr( pszReason, "kick" ) || Q_strstr( pszReason, "Kick" ) || Q_strstr( pszReason, g_pszVoteKickString ) )
+		if ( Q_strstr( pszReason, "kick" ) || Q_strstr( pszReason, "Kick" ) )
 		{
 			CBasePlayer *pPlayer = UTIL_PlayerByUserId( event->GetInt( "userid", 0 ) );
 			if ( !pPlayer )
@@ -2308,12 +1923,6 @@ void CTFGCServerSystem::FireGameEvent( IGameEvent *event )
 			if ( Q_strstr( pszReason, g_pszIdleKickString ) )
 			{
 				eReason = TFMatchLeaveReason_IDLE;
-			}
-			// kickid %d You have been voted off;
-			// Vote kicks should not trigger abandon
-			else if ( Q_strstr( pszReason, g_pszVoteKickString ) )
-			{
-				eReason = TFMatchLeaveReason_VOTE_KICK;
 			}
 
 			SetMatchPlayerDropped( steamId, eReason );

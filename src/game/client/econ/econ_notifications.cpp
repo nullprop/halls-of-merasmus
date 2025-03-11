@@ -21,7 +21,6 @@
 #include "rtime.h"
 #include "econ_controls.h"
 #include "hud_basechat.h"
-#include "hud_vote.h"
 #include "inputsystem/iinputsystem.h"
 #include "iinput.h"
 
@@ -745,12 +744,6 @@ public:
 			return false;
 		}
 
-		CHudVote *pHudVote = GET_HUDELEMENT( CHudVote );
-		if ( pHudVote && pHudVote->IsVoteUIActive() )
-		{
-			return false;
-		}
-		
 		return m_mapNotificationPanels.Count() > 0 || g_notificationQueue.HasItems();
 	}
 

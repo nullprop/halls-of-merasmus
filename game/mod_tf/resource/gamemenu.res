@@ -1,15 +1,7 @@
-"GameMenu" [$WIN32]
+"GameMenu"
 {
 	// These buttons are only shown while in-game
 	// and also are positioned by the .res file
-	"CallVoteButton"
-	{
-		"label"			""
-		"command"		"callvote"
-		"OnlyInGame"	"1"
-		"subimage" "icon_checkbox"
-		"tooltip" "#MMenu_CallVote"
-	}
 	"MutePlayersButton"
 	{
 		"label"			""

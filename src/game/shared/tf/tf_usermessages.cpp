@@ -83,13 +83,6 @@ void RegisterUserMessages()
 	usermessages->Register( "BreakModel_Pumpkin", -1 );
 	usermessages->Register( "BreakModelRocketDud", -1 );
 
-	// Voting
-	usermessages->Register( "CallVoteFailed", -1 );
-	usermessages->Register( "VoteStart", -1 );
-	usermessages->Register( "VotePass", -1 );
-	usermessages->Register( "VoteFailed", 6 );
-	usermessages->Register( "VoteSetup", -1 );  // Initiates client-side voting UI
-
 	usermessages->Register( "PlayerBonusPoints", 3 );
 	usermessages->Register( "RDTeamPointsChanged", 4 );
 

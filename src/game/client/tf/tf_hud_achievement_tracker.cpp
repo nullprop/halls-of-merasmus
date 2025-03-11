@@ -4,7 +4,6 @@
 #include "c_tf_player.h"
 #include "iachievementmgr.h"
 #include "achievementmgr.h"
-#include "hud_vote.h"
 #include "baseachievement.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -159,13 +158,5 @@ bool CHudAchievementTracker::ShouldShowAchievement( IAchievement *pAchievement )
 //-----------------------------------------------------------------------------
 bool CHudAchievementTracker::ShouldDraw()
 {
-	C_TFPlayer *pPlayer = CTFPlayer::GetLocalTFPlayer();
-	if ( pPlayer && pPlayer->IsPlayerClass( TF_CLASS_ENGINEER ) )
-	{
-		CHudVote *pHudVote = GET_HUDELEMENT( CHudVote );
-		if ( pHudVote && pHudVote->ShouldDraw() )
-			return false;
-	}
-
 	return BaseClass::ShouldDraw();
 }

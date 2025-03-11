@@ -2018,7 +2018,6 @@ public:
 	virtual float GetDefaultItemChargeMeterValue( void ) const { return 100.f; }
 #endif // TF_DLL
 
-	virtual bool BCanCallVote() { return true; }
 
 private:
 	CThreadFastMutex m_CalcAbsolutePositionMutex;

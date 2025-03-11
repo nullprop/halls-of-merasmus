@@ -22,7 +22,6 @@
 #include "ivieweffects.h"
 #include "viewrender.h"
 #include "tf_gamerules.h"
-#include "tf_hud_training.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -358,10 +357,9 @@ void CTFAnnotationsPanelCallout::ApplySchemeSettings( vgui::IScheme *pScheme )
 		m_pDistanceLabel->SetParent( m_pBackground );
 	}
 
-	wchar_t outputText[MAX_TRAINING_MSG_LENGTH];
-	if ( m_pAnnotationLabel && CTFHudTraining::FormatTrainingText( m_Text, outputText ) )
+	if ( m_pAnnotationLabel )
 	{
-		m_pAnnotationLabel->SetText(outputText);
+		m_pAnnotationLabel->SetText(m_Text);
 	}
 
 	m_pArrow = dynamic_cast<ImagePanel *>( FindChildByName( "ArrowIcon" ) );
@@ -626,10 +624,9 @@ void CTFAnnotationsPanelCallout::SetShowDistance( bool bShowDistance )
 void CTFAnnotationsPanelCallout::SetText( const char *text )
 {
 	m_Text = text;
-	wchar_t outputText[MAX_TRAINING_MSG_LENGTH];
-	if ( m_pAnnotationLabel && CTFHudTraining::FormatTrainingText( m_Text, outputText ) )
+	if ( m_pAnnotationLabel )
 	{
-		m_pAnnotationLabel->SetText(outputText);
+		m_pAnnotationLabel->SetText(m_Text);
 	}
 }
 

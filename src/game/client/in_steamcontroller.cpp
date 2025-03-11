@@ -152,7 +152,6 @@ static ControllerDigitalActionToCommand g_ControllerDigitalGameActions[] =
 	{ "voicerecord", "+voicerecord", CONTROLLER_ACTION_FLAGS_NONE },
 	{ "show_quest_log", "show_quest_log", CONTROLLER_ACTION_FLAGS_NEEDS_DEBOUNCE },
 	{ "showscores", "+showscores", CONTROLLER_ACTION_FLAGS_NONE },
-	{ "callvote", "callvote", CONTROLLER_ACTION_FLAGS_NONE },
 	{ "cl_trigger_first_notification", "cl_trigger_first_notification", CONTROLLER_ACTION_FLAGS_NEEDS_DEBOUNCE },
 	{ "cl_decline_first_notification", "cl_decline_first_notification", CONTROLLER_ACTION_FLAGS_NEEDS_DEBOUNCE },
 	{ "cl_trigger_first_notification", "vote option1", CONTROLLER_ACTION_FLAGS_NEEDS_DEBOUNCE },						// In here twice, because we overload this action to issue both commands

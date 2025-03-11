@@ -32,8 +32,6 @@ ConVar tf_mm_dashboard_spew_enabled( "tf_mm_dashboard_spew_enabled", "0", FCVAR_
 		} 																							\
 	} while(false)																					\
 
-extern ConVar tf_mm_next_map_vote_time;
-
 
 //-----------------------------------------------------------------------------
 // Purpose:

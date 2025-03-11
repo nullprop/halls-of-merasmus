@@ -28,7 +28,7 @@
 		"tall"			"100"
 		"visible"		"1"
 		"enabled"		"1"
-		"image"			"../logo/TF2_Logo"
+		"image"			"../logo/new_tf2_logo"
 		"scaleImage"	"1"		
 	}
 }

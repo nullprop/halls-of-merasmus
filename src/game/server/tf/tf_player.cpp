@@ -274,10 +274,6 @@ ConVar tf_halloween_allow_ghost_hit_by_kart_delay( "tf_halloween_allow_ghost_hit
 ConVar tf_maxhealth_drain_hp_min( "tf_maxhealth_drain_hp_min", "100", FCVAR_DEVELOPMENTONLY );
 ConVar tf_maxhealth_drain_deploy_cost( "tf_maxhealth_drain_deploy_cost", "20", FCVAR_DEVELOPMENTONLY );
 
-extern ConVar sv_vote_allow_spectators;
-ConVar sv_vote_late_join_time( "sv_vote_late_join_time", "90", FCVAR_NONE, "Grace period after the match starts before players who join the match receive a vote-creation cooldown" );
-ConVar sv_vote_late_join_cooldown( "sv_vote_late_join_cooldown", "300", FCVAR_NONE, "Length of the vote-creation cooldown when joining the server after the grace period has expired" );
-
 extern ConVar tf_feign_death_duration;
 extern ConVar spec_freeze_time;
 extern ConVar spec_freeze_traveltime;
@@ -3707,26 +3703,6 @@ void CTFPlayer::Spawn()
 			while ( (pEnt = gEntList.FindEntityByClassname( pEnt, "commentary_auto" )) != NULL )
 			{
 				pEnt->AcceptInput( "MultiplayerSpawned", this, this, emptyVariant, 0 );
-			}
-		}
-
-		bool bRemoveRestriction = ( GetTeamNumber() == TEAM_SPECTATOR ) || ( ( GetTeamNumber() > TEAM_SPECTATOR ) && !IsPlayerClass( TF_CLASS_UNDEFINED ) );
-		if ( !m_bFirstSpawnAndCanCallVote && bRemoveRestriction )
-		{
-			m_bFirstSpawnAndCanCallVote = true;
-
-			CTeamControlPointMaster *pMaster = g_hControlPointMasters.Count() ? g_hControlPointMasters[ 0 ] : NULL;
-			bool bFirstMiniRound = ( !pMaster || !pMaster->PlayingMiniRounds() || ( pMaster->GetCurrentRoundIndex() == 0 ) );
-			float flRoundStart = TFGameRules()->GetRoundStart();
-			bool bShouldHaveCooldown = ( TFGameRules()->GetRoundsPlayed() > 0 ) || !bFirstMiniRound || ( ( TFGameRules()->State_Get() == GR_STATE_RND_RUNNING ) && ( flRoundStart > 0.f ) && ( gpGlobals->curtime - flRoundStart > sv_vote_late_join_time.GetFloat() ) );
-			if ( bShouldHaveCooldown )
-			{
-				// add a cooldown for our first vote
-				if ( g_voteControllerGlobal )
-					g_voteControllerGlobal->TrackVoteCaller( this, sv_vote_late_join_cooldown.GetFloat() );
-
-				if ( GetTeamVoteController() )
-					GetTeamVoteController()->TrackVoteCaller( this, sv_vote_late_join_cooldown.GetFloat() );
 			}
 		}
 	}
@@ -8027,43 +8003,6 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 			ShowViewPortPanel( PANEL_TEAM );
 		}
 
-		return true;
-	}
-	else if ( FStrEq( "next_map_vote", pcmd ) )
-	{
-		CTFGameRules::EUserNextMapVote eVoteState = (CTFGameRules::EUserNextMapVote)atoi( args[1] );
-		switch( eVoteState )
-		{
-		case CTFGameRules::USER_NEXT_MAP_VOTE_MAP_0:
-		case CTFGameRules::USER_NEXT_MAP_VOTE_MAP_1:
-		case CTFGameRules::USER_NEXT_MAP_VOTE_MAP_2:
-			// Valid
-			break;
-		default:
-			// Invalid
-			Assert( false );
-			return true;
-		}
-
-		// No flip flop!
-		if ( TFGameRules()->PlayerNextMapVoteState( entindex() ) != CTFGameRules::USER_NEXT_MAP_VOTE_UNDECIDED )
-			return true;
-
-		// Needs to do next-map voting
-		const IMatchGroupDescription* pMatchDesc = GetMatchGroupDescription( TFGameRules()->GetCurrentMatchGroup() );
-		if ( !pMatchDesc || !pMatchDesc->BUsesMapVoteAfterMatchEnds() )
-			return true;
-
-		if ( TFGameRules()->State_Get() != GR_STATE_GAME_OVER )
-			return true;
-
-		CMatchInfo* pMatch = GTFGCClientSystem()->GetMatch();
-		if ( !pMatch )
-			return true;
-
-		TFGameRules()->SetPlayerNextMapVote( entindex(), eVoteState );
-		DevMsg( "Settings player %d to rematch vote state %d.\n", entindex(), eVoteState );
-		
 		return true;
 	}
 	else if ( FStrEq( "cyoa_pda_open", pcmd ) )
@@ -13378,13 +13317,6 @@ void CTFPlayer::TeamFortress_ClientDisconnected( void )
 	TFGameRules()->PlayerHistory_AddPlayer( this );
 
 	DuelMiniGame_NotifyPlayerDisconnect( this );
-
-	// notify the vote controller
-	if ( g_voteControllerGlobal )
-		g_voteControllerGlobal->OnPlayerDisconnected( this );
-
-	if ( GetTeamVoteController() )
-		GetTeamVoteController()->OnPlayerDisconnected( this );
 
 	// cleanup coaching
 	if ( GetCoach() )
@@ -22903,38 +22835,6 @@ bool CTFPlayer::BHaveChatSuspensionInCurrentMatch()
 	}
 
 	return false;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::BCanCallVote()
-{
-	if ( GetTeamNumber() == TEAM_UNASSIGNED )
-		return false;
-
-	if ( GetTeamNumber() == TEAM_SPECTATOR )
-		return sv_vote_allow_spectators.GetBool();
-
-	if ( !m_bFirstSpawnAndCanCallVote )
-		return false;
-
-	return BaseClass::BCanCallVote();
-}
-
-CVoteController *CTFPlayer::GetTeamVoteController()
-{
-	switch ( GetTeamNumber() )
-	{
-		case TF_TEAM_RED:
-			return g_voteControllerRed;
-		
-		case TF_TEAM_BLUE:
-			return g_voteControllerBlu;
-
-		default:
-			return g_voteControllerGlobal;
-	}
 }
 
 void	CTFPlayer::ScriptAddCond( int nCond )

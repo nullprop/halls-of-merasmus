@@ -43,7 +43,6 @@ public:
 		m_bRequireCompleteMatch			= false;
 		m_bAllowSpecModeChange			= true;
 		m_bAutomaticallyRequeueAfterMatchEnds	= true;
-		m_bUsesMapVoteOnRoundEnd		= true;
 		m_bScramblesTeamsOnRollingMatch = true;
 		m_bUsesXP						= true;
 		m_bUsesSurveys					= true;

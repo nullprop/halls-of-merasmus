@@ -31,19 +31,9 @@
 #include "materialsystem/imaterialsystem.h"
 #include "materialsystem/materialsystem_config.h"
 #include "tf_warinfopanel.h"
-#include "quest_log_panel.h"
 #include "tf_item_inventory.h"
-#include "quest_log_panel.h"
-#include "econ_quests.h"
-#include "tf_streams.h"
 #include "tf_matchmaking_shared.h"
-#include "tf_lobby_container_frame_comp.h"
-#include "tf_lobby_container_frame_mvm.h"
-#include "tf_lobby_container_frame_casual.h"
-#include "tf_badge_panel.h"
-#include "tf_quest_map_panel.h"
 #include "tf_matchmaking_dashboard_explanations.h"
-#include "tf_matchmaking_dashboard_comp_rank_tooltip.h"
 #include "tf_rating_data.h"
 #include "tf_progression.h"
 
@@ -55,9 +45,7 @@
 #include "icommandline.h"
 #include "vgui/ISystem.h"
 #include "mute_player_dialog.h"
-#include "tf_quest_map_utils.h"
 #include "tf_matchmaking_dashboard.h"
-#include "tf_pvp_rank_panel.h"
 
 #include "econ_paintkit.h"
 #include "ienginevgui.h"
@@ -68,7 +56,6 @@
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-CMOTDManager CHudMainMenuOverride::m_MOTDManager;
 
 void AddSubKeyNamed( KeyValues *pKeys, const char *pszName );
 
@@ -84,29 +71,11 @@ void cc_tf_safemode_toggle( IConVar *pConVar, const char *pOldString, float flOl
 	}
 }
 
-void cc_tf_mainmenu_match_panel_type( IConVar *pConVar, const char *pOldString, float flOldValue )
-{
-	CHudMainMenuOverride *pMMOverride = (CHudMainMenuOverride*)( gViewPortInterface->FindPanelByName( PANEL_MAINMENUOVERRIDE ) );
-	if ( pMMOverride )
-	{
-		pMMOverride->UpdateRankPanelType();
-	}
-}
-
-
 ConVar tf_recent_achievements( "tf_recent_achievements", "0", FCVAR_ARCHIVE );
 ConVar tf_find_a_match_hint_viewed( "tf_find_a_match_hint_viewed", "0", FCVAR_ARCHIVE );
-ConVar tf_training_has_prompted_for_training( "tf_training_has_prompted_for_training", "0", FCVAR_ARCHIVE, "Whether the user has been prompted for training" );
-ConVar tf_training_has_prompted_for_offline_practice( "tf_training_has_prompted_for_offline_practice", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to try offline practice." );
-ConVar tf_training_has_prompted_for_forums( "tf_training_has_prompted_for_forums", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to view the new user forums." );
-ConVar tf_training_has_prompted_for_options( "tf_training_has_prompted_for_options", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to view the TF2 advanced options." );
-ConVar tf_training_has_prompted_for_loadout( "tf_training_has_prompted_for_loadout", "0", FCVAR_ARCHIVE, "Whether the user has been prompted to equip something in their loadout." );
 ConVar cl_ask_bigpicture_controller_opt_out( "cl_ask_bigpicture_controller_opt_out", "0", FCVAR_ARCHIVE, "Whether the user has opted out of being prompted for controller support in Big Picture." );
-ConVar cl_mainmenu_operation_motd_start( "cl_mainmenu_operation_motd_start", "0", FCVAR_ARCHIVE | FCVAR_HIDDEN );
-ConVar cl_mainmenu_operation_motd_reset( "cl_mainmenu_operation_motd_reset", "0", FCVAR_ARCHIVE | FCVAR_HIDDEN );
 ConVar cl_mainmenu_safemode( "cl_mainmenu_safemode", "0", FCVAR_NONE, "Enable safe mode", cc_tf_safemode_toggle );
 ConVar cl_mainmenu_updateglow( "cl_mainmenu_updateglow", "1", FCVAR_ARCHIVE | FCVAR_HIDDEN );
-ConVar tf_mainmenu_match_panel_type( "tf_mainmenu_match_panel_type", "7", FCVAR_ARCHIVE | FCVAR_HIDDEN, "The match group data to show on the main menu", cc_tf_mainmenu_match_panel_type );
 
 void cc_promotional_codes_button_changed( IConVar *pConVar, const char *pOldString, float flOldValue )
 {
@@ -117,8 +86,6 @@ void cc_promotional_codes_button_changed( IConVar *pConVar, const char *pOldStri
 	}
 }
 ConVar cl_promotional_codes_button_show( "cl_promotional_codes_button_show", "1", FCVAR_ARCHIVE, "Toggles the 'View Promotional Codes' button in the main menu for players that have used the 'RIFT Well Spun Hat Claim Code'.", cc_promotional_codes_button_changed );
-
-extern bool Training_IsComplete();
 
 void PromptOrFireCommand( const char* pszCommand )
 {
@@ -146,46 +113,17 @@ CHudMainMenuOverride::CHudMainMenuOverride( IViewPort *pViewPort ) : BaseClass( 
 	SetAutoDelete( false );
 	SetVisible( true );
 
-	m_pVRModeButton = NULL;
-	m_pVRModeBackground = NULL;
-
 	m_pButtonKV = NULL;
 	m_pQuitButton = NULL;
 	m_pDisconnectButton = NULL;
 	m_pBackToReplaysButton = NULL;
 	m_pStoreHasNewItemsImage = NULL;
 
-	m_nLastMOTDRequestAt = 0;
-	m_nLastMOTDRequestLanguage = k_Lang_English;
-	m_bReloadedAllMOTDs = false;
-	m_iCurrentMOTD = -1;
-	m_bInitMOTD = false;
-
-	m_pMOTDPanel = NULL;
-	m_pMOTDShowPanel = NULL;
-	m_pMOTDURLButton = NULL;
-	m_pMOTDNextButton = NULL;
-	m_pMOTDPrevButton = NULL;
 	m_iNotiPanelWide = 0;
 
 	m_bReapplyButtonKVs = false;
-	
-	m_pMOTDHeaderLabel = NULL;
-	m_pMOTDHeaderIcon = NULL;
-	m_pMOTDTitleLabel = NULL;
-	m_pMOTDTitleImageContainer = NULL;
-	m_pMOTDTitleImage = NULL;
-	m_hTitleLabelFont = vgui::INVALID_FONT;
-
-
-	m_bHaveNewMOTDs = false;
-	m_bMOTDShownAtStartup = false;
 
 	m_iCharacterImageIdx = -1;
-
-
-	m_flCheckTrainingAt = 0;
-	m_bWasInTraining = false;
 
 	ScheduleItemCheck();
 
@@ -203,26 +141,6 @@ CHudMainMenuOverride::CHudMainMenuOverride( IViewPort *pViewPort ) : BaseClass( 
 	ListenForGameEvent( "gameui_activated" );
 	ListenForGameEvent( "party_updated" );
 	ListenForGameEvent( "server_spawn" );
-
-	m_pRankPanel = new CPvPRankPanel( this, "rankpanel" );
-	m_pRankModelPanel = new CPvPRankPanel( this, "rankmodelpanel" );
-
-	// Create our MOTD scrollable section
-	m_pMOTDPanel = new vgui::EditablePanel( this, "MOTD_Panel" );
-	m_pMOTDPanel->SetVisible( true );
-	m_pMOTDTextPanel = new vgui::EditablePanel( this, "MOTD_TextPanel" );
-	m_pMOTDTextScroller = new vgui::ScrollableEditablePanel( m_pMOTDPanel, m_pMOTDTextPanel, "MOTD_TextScroller" );
-
-	m_pMOTDTextScroller->GetScrollbar()->SetAutohideButtons( true );
-	m_pMOTDTextScroller->GetScrollbar()->SetPaintBorderEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->SetPaintBackgroundEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->GetButton(0)->SetPaintBorderEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->GetButton(0)->SetPaintBackgroundEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->GetButton(1)->SetPaintBorderEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->GetButton(1)->SetPaintBackgroundEnabled( false );
-	m_pMOTDTextScroller->GetScrollbar()->SetAutoResize( PIN_TOPRIGHT, AUTORESIZE_DOWN, -24, 0, -16, 0 );
-
-	m_pMOTDTextLabel = NULL;
 
 	m_pNotificationsShowPanel = NULL;
 	m_pNotificationsPanel = new vgui::EditablePanel( this, "Notifications_Panel" );
@@ -243,7 +161,6 @@ CHudMainMenuOverride::CHudMainMenuOverride( IViewPort *pViewPort ) : BaseClass( 
 
 	m_bBackgroundUsesCharacterImages = true;
 
-	//m_pWatchStreamsPanel = new CTFStreamListPanel( this, "StreamListPanel" );
 	m_pCharacterImagePanel = new ImagePanel( this, "TFCharacterImage" );
 
 	vgui::ivgui()->AddTickSignal( GetVPanel(), 50 );
@@ -344,59 +261,7 @@ void CHudMainMenuOverride::FireGameEvent( IGameEvent *event )
 {
 	const char * type = event->GetName();
 
-	if ( Q_strcmp( type, "gc_new_session" ) == 0 )
-	{
-		char uilanguage[ 64 ];
-		uilanguage[0] = 0;
-		engine->GetUILanguage( uilanguage, sizeof( uilanguage ) );
-
-		//V_strcpy_safe( uilanguage, "german" );
-
-		ELanguage nCurLang = PchLanguageToELanguage( uilanguage );
-
-		// If we've changed language from when we last requested, we ask for all MOTDs again.
-		if ( nCurLang != m_nLastMOTDRequestLanguage )
-		{
-			m_nLastMOTDRequestAt = 0;
-			m_nLastMOTDRequestLanguage = nCurLang;
-			m_bReloadedAllMOTDs = true;
-		}
-
-		// Ask the GC for the MOTD
-		GCSDK::CGCMsg<MsgGCMOTDRequest_t> msg( k_EMsgGCMOTDRequest );
-		msg.Body().m_eLanguage = nCurLang;
-		msg.Body().m_nLastMOTDRequest = m_nLastMOTDRequestAt;
-		GCClientSystem()->BSendMessage( msg );
-
-		// Roll our last asked time forward here. It won't get written to our
-		// cache file if we don't get a response from the GC.
-		CRTime cTimeHack;
-		m_nLastMOTDRequestAt = CRTime::RTime32TimeCur();
-
-		// Load the store info, so we can display the current special
-
-		UpdateRankPanelVisibility();
-	}
-	else if ( Q_strcmp( type, "item_schema_initialized" ) == 0 )
-	{
-		// Tell the schema to load its MOTD block from our clientside cache file
-		CUtlVector< CUtlString > vecErrors;
-		KeyValues *pEntriesKV = new KeyValues( "motd_entries");
-		if ( pEntriesKV->LoadFromFile( g_pFullFileSystem, GC_MOTD_CACHE_FILE ) )
-		{
-			// Extract our last MOTD request time
-			const char *pszTime = pEntriesKV->GetString( "last_request_time", NULL );
-			m_nLastMOTDRequestAt = ( pszTime && pszTime[0] ) ? CRTime::RTime32FromString(pszTime) : 0;
-
-			const char *pszLang = pEntriesKV->GetString( "last_request_language", NULL );
-			m_nLastMOTDRequestLanguage = ( pszLang && pszLang[0] ) ? PchLanguageToELanguage(pszLang) : k_Lang_English;
-
-			// Parse the entries
-			GetMOTDManager().BInitMOTDEntries( pEntriesKV, &vecErrors );
-			GetMOTDManager().PurgeUnusedMOTDEntries( pEntriesKV );
-		}
-	}
-	else if ( Q_strcmp( type, "store_pricesheet_updated" ) == 0 )
+	if ( Q_strcmp( type, "store_pricesheet_updated" ) == 0 )
 	{
 		// If the contents of the store have changed since the last time we went in and/or launched
 		// the game, change the button color so that players know there's new content available.
@@ -508,74 +373,12 @@ void CHudMainMenuOverride::ApplySchemeSettings( IScheme *scheme )
 		m_pStoreButton->SetVisible(false);
 	}
 
-	m_pWatchStreamButton = dynamic_cast<EditablePanel*>(FindChildByName("WatchStreamButton"));
-	if (m_pWatchStreamButton)
-	{
-		m_pWatchStreamButton->SetVisible(false);
-		m_pWatchStreamButton->SetEnabled(false);
-	}
-
-	m_pQuestLogButton = dynamic_cast<EditablePanel*>(FindChildByName("QuestLogButton"));
-	if (m_pQuestLogButton)
-	{
-		m_pQuestLogButton->SetVisible(false);
-		m_pQuestLogButton->SetEnabled(false);
-	}
-
-	{
-		Panel *pButton = FindChildByName( "VRModeButton" );
-		if( pButton )
-		{
-			m_pVRModeButton = dynamic_cast< CExButton *>( pButton->GetChild( 0 ) );
-		}
-	}
-	m_pVRModeBackground = FindChildByName( "VRBGPanel" );
-
-	bool bShowVR = materials->GetCurrentConfigForVideoCard().m_nVRModeAdapter == materials->GetCurrentAdapter();
-	if ( m_pVRModeBackground )
-	{
-		m_pVRModeBackground->SetVisible( bShowVR );
-	}
-
 	m_bIsDisconnectText = true;
-
-	// Tell all the MOTD buttons that we want their messages
-	m_pMOTDPrevButton = dynamic_cast<CExImageButton*>( m_pMOTDPanel->FindChildByName("MOTD_PrevButton") );
-	m_pMOTDNextButton = dynamic_cast<CExImageButton*>( m_pMOTDPanel->FindChildByName("MOTD_NextButton") );
-	m_pMOTDURLButton = dynamic_cast<CExButton*>( m_pMOTDPanel->FindChildByName("MOTD_URLButton") );
 
 	// m_pNotificationsShowPanel shows number of unread notifications. Pressing it pops up the first notification.
 	m_pNotificationsShowPanel = dynamic_cast<vgui::EditablePanel*>( FindChildByName("Notifications_ShowButtonPanel") );
 
 	m_pNotificationsShowPanel->SetVisible(false);
-
-	m_iNotiPanelWide = m_pNotificationsPanel->GetWide();
-
-	// m_pMOTDShowPanel shows that the player has an unread MOTD. Pressing it pops up the MOTD.
-	m_pMOTDShowPanel = dynamic_cast<vgui::EditablePanel*>( FindChildByName("MOTD_ShowButtonPanel") );
-	m_pMOTDShowPanel->SetVisible(false);
-
-	vgui::EditablePanel* pHeaderContainer = dynamic_cast<vgui::EditablePanel*>( m_pMOTDPanel->FindChildByName( "MOTD_HeaderContainer" ) );
-	if ( pHeaderContainer )
-	{
-		m_pMOTDHeaderLabel = dynamic_cast<vgui::Label*>( pHeaderContainer->FindChildByName( "MOTD_HeaderLabel" ) );
-	}
-
-	m_pMOTDHeaderIcon = dynamic_cast<vgui::ImagePanel*>( m_pMOTDPanel->FindChildByName("MOTD_HeaderIcon") );
-
-	m_pMOTDTitleLabel = dynamic_cast<vgui::Label*>( m_pMOTDPanel->FindChildByName("MOTD_TitleLabel") );
-	if ( m_pMOTDTitleLabel )
-	{
-		m_hTitleLabelFont = m_pMOTDTitleLabel->GetFont();
-	}
-
-	m_pMOTDTextLabel = dynamic_cast<vgui::Label*>( m_pMOTDTextPanel->FindChildByName( "MOTD_TextLabel" ) );
-
-	m_pMOTDTitleImageContainer = dynamic_cast<vgui::EditablePanel*>( m_pMOTDPanel->FindChildByName("MOTD_TitleImageContainer") );
-	if ( m_pMOTDTitleImageContainer )
-	{
-		m_pMOTDTitleImage = dynamic_cast<vgui::ImagePanel*>( m_pMOTDTitleImageContainer->FindChildByName("MOTD_TitleImage") );
-	}
 
 	m_pNotificationsScroller->GetScrollbar()->SetAutohideButtons( true );
 	m_pNotificationsScroller->GetScrollbar()->SetPaintBorderEnabled( false );
@@ -616,12 +419,9 @@ void CHudMainMenuOverride::ApplySchemeSettings( IScheme *scheme )
 	UpdateNotifications();
 	UpdatePromotionalCodes();
 
-	ScheduleTrainingCheck( false );
-
 	PerformKeyRebindings();
 
 	GetMMDashboard();
-	GetCompRanksTooltip();
 }
 
 //-----------------------------------------------------------------------------
@@ -727,16 +527,6 @@ void CHudMainMenuOverride::LoadCharacterImageFile( void )
 		if ( vecUseableCharacters.IsValidIndex( m_iCharacterImageIdx ) )
 		{
 			KeyValues *pCharacter = vecUseableCharacters[m_iCharacterImageIdx];
-
-			if ( IsFreeTrialAccount( ) && GetQuestMapPanel()->IsVisible() )
-			{
-				const char* text = pCharacter->GetString( "store_text" );
-				if ( text )
-				{
-					StartHighlightAnimation( MMHA_STORE )->SetDialogVariable( "highlighttext", g_pVGuiLocalize->Find( text ) );
-				}
-			}
-
 			const char* image_name = pCharacter->GetString( "image" );
 			m_pCharacterImagePanel->SetImage( image_name );
 		}
@@ -789,8 +579,9 @@ void CHudMainMenuOverride::LoadMenuEntries( void )
 		vgui::EditablePanel *pPanel = dynamic_cast<vgui::EditablePanel *>( FindChildByName( name, true ) );
 		if ( !pPanel )
 		{
-			Assert( false );	// We don't want to do this anymore.  We need an actual hierarchy so things can slide
-								// around when the play buttin is pressed and the play options expand
+			// We don't want to do this anymore.  We need an actual hierarchy so things can slide
+			// around when the play buttin is pressed and the play options expand.
+			AssertMsg1( false, "Could not find panel %s\n", name );
 			pPanel = new vgui::EditablePanel( this, name );
 		}
 		else
@@ -922,8 +713,6 @@ void CHudMainMenuOverride::PerformLayout( void )
 	}
 
 	m_pEventPromoContainer->SetVisible(false);
-
-	UpdateRankPanelVisibility();
 }
 
 
@@ -942,7 +731,6 @@ void CHudMainMenuOverride::OnUpdateMenu( void )
 #else
 	bool bInReplay = false;
 #endif
-	bool bIsVREnabled = materials->GetCurrentConfigForVideoCard().m_nVRModeAdapter == materials->GetCurrentAdapter();
 
 	// First, reapply any KVs we have to reapply
 	if ( m_bReapplyButtonKVs )
@@ -993,7 +781,7 @@ void CHudMainMenuOverride::OnUpdateMenu( void )
 		{
 			shouldBeVisible = false;
 		}
-		else if ( m_pMMButtonEntries[i].bOnlyVREnabled && ( !bIsVREnabled || ShouldForceVRActive() ) )
+		else if ( m_pMMButtonEntries[i].bOnlyVREnabled )
 		{
 			shouldBeVisible = false;
 		}
@@ -1044,35 +832,10 @@ void CHudMainMenuOverride::OnUpdateMenu( void )
 
 	if ( m_pBackground )
 	{
-		if ( cl_mainmenu_operation_motd_reset.GetBool() && cl_mainmenu_operation_motd_start.GetBool() )
-		{
-			cl_mainmenu_operation_motd_start.SetValue( 0 );
-			cl_mainmenu_operation_motd_reset.SetValue( 0 );
-		}
-
-		if ( !cl_mainmenu_operation_motd_start.GetInt() )
-		{
-			char sztime[k_RTimeRenderBufferSize];
-			CRTime::RTime32ToString( CRTime::RTime32TimeCur(), sztime );
-			cl_mainmenu_operation_motd_start.SetValue( sztime );
-		}
-
 		bool bShouldBeVisible = bInGame == false;
 		if ( m_pBackground->IsVisible() != bShouldBeVisible )
 		{
 			m_pBackground->SetVisible( bShouldBeVisible );
-
-			// Always show this on startup when we have a new campaign
-			if ( m_bStabilizedInitialLayout && bShouldBeVisible && ( m_bHaveNewMOTDs || !m_bMOTDShownAtStartup ) )
-			{
-				RTime32 rtFirstLaunchTime = CRTime::RTime32FromString( cl_mainmenu_operation_motd_start.GetString() );
-				RTime32 rtThreeDaysFromStart = CRTime::RTime32DateAdd( rtFirstLaunchTime, 7, k_ETimeUnitDay );
-				if ( m_bHaveNewMOTDs || CRTime::RTime32TimeCur() < rtThreeDaysFromStart )
-				{
-					SetMOTDVisible( true );
-					m_bMOTDShownAtStartup = true;
-				}
-			}
 		}
 	}
 
@@ -1083,25 +846,10 @@ void CHudMainMenuOverride::OnUpdateMenu( void )
 		ScheduleItemCheck();
 	}
 
-	if ( !bInGame && m_flCheckTrainingAt && m_flCheckTrainingAt < engine->Time() )
-	{
-		m_flCheckTrainingAt = 0;
-		CheckTrainingStatus();
-	}
-
 	if ( !bInGame && m_flCheckUnclaimedItems && m_flCheckUnclaimedItems < engine->Time() )
 	{
 		m_flCheckUnclaimedItems = 0;
 		CheckUnclaimedItems();
-	}
-
-
-	if ( m_pVRModeButton && m_pVRModeButton->IsVisible() )
-	{
-		if( UseVR() )
-			m_pVRModeButton->SetText( "#MMenu_VRMode_Deactivate" );
-		else
-			m_pVRModeButton->SetText( "#MMenu_VRMode_Activate" );
 	}
 
 	if ( !IsLayoutInvalid() )
@@ -1147,361 +895,6 @@ void CHudMainMenuOverride::CheckUnclaimedItems()
 		return;
 
 	TFInventoryManager()->GetLocalTFInventory()->NotifyHasNewItems();
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::OnConfirm( KeyValues *pParams )
-{
-	if ( pParams->GetBool( "confirmed" ) )
-	{
-		engine->ClientCmd_Unrestricted( "disconnect" );
-		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand( "engine training_showdlg" );
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::UpdateMOTD( bool bNewMOTDs )
-{
-	return;
-
-	if ( m_bInitMOTD == false )
-	{
-		m_pMOTDPanel->InvalidateLayout( true, true );
-		m_bInitMOTD = true;
-	}
-
-	if ( bNewMOTDs )
-	{
-		m_bHaveNewMOTDs = true;
-		m_iCurrentMOTD = -1;
-	}
-
-	int iCount = GetMOTDManager().GetNumMOTDs();
-	if ( !iCount || m_iCurrentMOTD < 0 )
-	{
-		m_iCurrentMOTD = (iCount-1);
-	}
-
-	// If we don't have an MOTD selected, show the most recent one
-	CMOTDEntryDefinition *pMOTD = GetMOTDManager().GetMOTDByIndex( m_iCurrentMOTD );
-	if ( pMOTD )
-	{
-		char uilanguage[ 64 ];
-		uilanguage[0] = 0;
-		engine->GetUILanguage( uilanguage, sizeof( uilanguage ) );
-		ELanguage nCurLang = PchLanguageToELanguage( uilanguage );
-
-		RTime32 nTime = pMOTD->GetPostTime();
-		wchar_t wzDate[64];
-
-		char rgchDateBuf[ 128 ];
-		BGetLocalFormattedDate( nTime, rgchDateBuf, sizeof( rgchDateBuf ) );
-
-		// Start with the day ("Aug 21")
-		CRTime cTime( nTime );
-		g_pVGuiLocalize->ConvertANSIToUnicode( rgchDateBuf, wzDate, sizeof( wzDate ) );
-
-		m_pMOTDPanel->SetDialogVariable( "motddate", wzDate );
-
-		// Header Color and text
-		if ( m_pMOTDHeaderLabel )
-		{
-			m_pMOTDHeaderLabel->SetText( pMOTD->GetHeaderTitle(nCurLang) );
-			int iHeaderType = pMOTD->GetHeaderType();
-			switch ( iHeaderType )
-			{
-			case 0:
-				m_pMOTDHeaderLabel->SetBgColor( Color ( 183, 108, 58, 255 ) );
-				break;
-			case 1:
-				m_pMOTDHeaderLabel->SetBgColor( Color ( 141, 178, 61, 255 ) );
-				break;
-			default:
-				m_pMOTDHeaderLabel->SetBgColor( Color ( 183, 108, 58, 255 ) );
-				break;
-			}
-		}
-
-		if ( m_pMOTDHeaderIcon )
-		{
-			// Header Class icon
-			if (  pMOTD->GetHeaderIcon() == NULL || Q_strcmp( pMOTD->GetHeaderIcon(), "" ) == 0)
-			{
-				m_pMOTDHeaderIcon->SetVisible(false);
-			}
-			else
-			{
-				m_pMOTDHeaderIcon->SetVisible(true);
-				m_pMOTDHeaderIcon->SetImage( pMOTD->GetHeaderIcon() );
-			}
-		}
-
-		// Set the Title and change font until it fits
-		// title
-		int iTitleWide = 0;
-		int iTitleTall = 0;
-
-		int iLabelWide = 0;
-		int iLabelTall = 0;
-
-		wchar_t wszText[512];
-		g_pVGuiLocalize->ConvertANSIToUnicode( pMOTD->GetTitle(nCurLang), wszText, sizeof( wszText ) );
-
-		if ( m_hTitleLabelFont != vgui::INVALID_FONT )
-		{
-			surface()->GetTextSize( m_hTitleLabelFont, wszText, iTitleWide, iTitleTall );
-		}
-
-		if ( m_pMOTDTitleLabel )
-		{
-			m_pMOTDTitleLabel->GetSize( iLabelWide, iLabelTall );
-
-			if ( iTitleWide > iLabelWide )
-			{
-				IScheme *pScheme = scheme()->GetIScheme( m_pMOTDTitleLabel->GetScheme() );
-
-				int hMediumBoldFont = pScheme->GetFont( "HudFontMediumBold" );
-				surface()->GetTextSize( hMediumBoldFont, wszText, iTitleWide, iTitleTall );
-				if ( iTitleWide > iLabelWide )
-				{
-					m_pMOTDTitleLabel->SetFont( pScheme->GetFont( "HudFontMediumSmallBold" ) );
-				}
-				else
-				{
-					m_pMOTDTitleLabel->SetFont( hMediumBoldFont );
-				}
-			}
-			else
-			{
-				if ( m_hTitleLabelFont != vgui::INVALID_FONT )
-				{
-					m_pMOTDTitleLabel->SetFont( m_hTitleLabelFont );
-				}
-			}
-		}
-		m_pMOTDPanel->SetDialogVariable( "motdtitle", pMOTD->GetTitle(nCurLang) );
-
-		// Body Text
-		m_pMOTDTextPanel->SetDialogVariable( "motdtext", pMOTD->GetText(nCurLang) );
-
-		// Image
-		const char* pszImage = pMOTD->GetImage();
-
-		if ( m_pMOTDTitleImage )
-		{
-			m_pMOTDTitleImage->SetShouldScaleImage( false );
-			if ( pszImage == NULL || Q_strcmp( pszImage, "" ) == 0 || Q_strcmp( pszImage, "class_icons/filter_all_on") == 0 )
-			{
-				m_pMOTDTitleImage->SetImage( "../logo/new_tf2_logo" );
-			}
-			else
-			{
-				m_pMOTDTitleImage->SetImage( pszImage );
-			}
-
-			IImage *pImage = m_pMOTDTitleImage->GetImage();
-			int iContentWide = 0;
-			int iContentTall = 0;
-			if ( m_pMOTDTitleImageContainer )
-			{
-				m_pMOTDTitleImageContainer->GetSize( iContentWide, iContentTall );
-			}
-
-			int iImgWide;
-			int iImgTall;
-			pImage->GetSize( iImgWide, iImgTall );
-
-			// get the size of the content
-			// perform a uniform scale along the horizontal
-			float fImageScale = MIN( (float)iContentWide / (float)iImgWide, 1.0f );
-			float fScaledTall = iImgTall * fImageScale;
-			float fScaledWide = iImgWide * fImageScale;
-			pImage->SetSize( fScaledWide, fScaledTall );
-
-			// reposition the image so that its centered
-			m_pMOTDTitleImage->SetPos( (iContentWide - fScaledWide) / 2, (iContentTall - fScaledTall) / 2 );
-		}
-
-		// We need to resize our text label to fit all the text
-		if ( m_pMOTDTextLabel )
-		{
-			m_pMOTDTextLabel->InvalidateLayout( true );
-
-			int wide, tall;
-			m_pMOTDTextLabel->GetContentSize(wide, tall);
-			m_pMOTDTextLabel->SetSize( m_pMOTDTextPanel->GetWide(), tall );
-			m_pMOTDTextPanel->SetSize( m_pMOTDTextPanel->GetWide(), m_pMOTDTextLabel->GetTall() );
-		}
-
-		if ( m_pMOTDURLButton )
-		{
-			const char *pszURL = pMOTD->GetURL();
-			m_pMOTDURLButton->SetVisible( (pszURL && pszURL[0]) );
-		}
-		if ( m_pMOTDPrevButton )
-		{
-			m_pMOTDPrevButton->SetEnabled( m_iCurrentMOTD > 0 );
-			m_pMOTDPrevButton->SetSubImage( m_iCurrentMOTD > 0 ? "blog_back" : "blog_back_disabled" );
-		}
-		if ( m_pMOTDNextButton )
-		{
-			m_pMOTDNextButton->SetEnabled( m_iCurrentMOTD < (iCount-1) );
-			m_pMOTDNextButton->SetSubImage( m_iCurrentMOTD < (iCount-1) ? "blog_forward" : "blog_forward_disabled" );
-		}
-
-		// Move our scrollbar to the top.
-		m_pMOTDTextScroller->InvalidateLayout();
-		m_pMOTDTextScroller->Repaint();
-		m_pMOTDTextScroller->GetScrollbar()->SetValue( 0 );
-		m_pMOTDTextScroller->GetScrollbar()->SetVisible( m_pMOTDTextPanel->GetTall() > m_pMOTDTextScroller->GetScrollbar()->GetTall() );
-		m_pMOTDTextScroller->GetScrollbar()->InvalidateLayout();
-		m_pMOTDTextScroller->GetScrollbar()->Repaint();
-	}
-	else
-	{
-		// Hide the MOTD, and the button to show it.
-		SetMOTDVisible( false );
-
-		if ( m_pMOTDShowPanel )
-		{
-			m_pMOTDShowPanel->SetVisible( false );
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::SetMOTDButtonVisible( bool bVisible )
-{
-	if (m_pMOTDShowPanel)
-	{
-		m_pMOTDShowPanel->SetVisible(false);
-	}
-	if (m_pMOTDPanel)
-	{
-		m_pMOTDPanel->SetVisible(false);
-	}
-	return;
-
-	if ( bVisible && m_pMOTDPanel && m_pMOTDPanel->IsVisible() )
-		return;
-
-	if ( m_pMOTDShowPanel )
-	{
-		// Show the notifications show panel button if we have new notifications.
-		m_pMOTDShowPanel->SetVisible( bVisible );
-
-		if ( bVisible && m_bHaveNewMOTDs )
-		{
-			g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( m_pMOTDShowPanel, "HasMOTDBlink" );
-		}
-		else
-		{
-			g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( m_pMOTDShowPanel, "HasMOTDBlinkStop" );
-		}
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::SetMOTDVisible( bool bVisible )
-{
-	m_pMOTDPanel->SetVisible( bVisible );
-
-	if ( bVisible )
-	{
-		// Ensure the text is correct.
-		UpdateMOTD( false );
-
-		// Clear MOTD button.
-		SetMOTDButtonVisible( true );
-		SetNotificationsPanelVisible( false );
-		//SetWatchStreamVisible( false );
-		//SetNotificationsButtonVisible( false );
-
-		// Consider new MOTDs as having been viewed.
-		m_bHaveNewMOTDs = false;
-	}
-	else
-	{
-		SetMOTDButtonVisible( true );
-		UpdateNotifications();
-	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::SetQuestMapVisible( bool bVisible )
-{
-	return;
-
-	if ( bVisible )
-	{
-		GetQuestMapPanel()->InvalidateLayout( true );
-		SetMOTDVisible( false );
-		SetNotificationsPanelVisible( false );
-		//SetWatchStreamVisible( false );
-	}
-
-	GetQuestMapPanel()->SetVisible( bVisible );
-}
-
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-//void CHudMainMenuOverride::SetWatchStreamVisible( bool bVisible )
-//{
-//	m_pWatchStreamsPanel->SetVisible( bVisible );
-//
-//	if ( bVisible )
-//	{
-//		SetMOTDVisible( false );
-//		SetNotificationsPanelVisible( false );
-//	}
-//}
-
-bool CHudMainMenuOverride::CheckAndWarnForPREC( void )
-{
-	enum check_state
-	{
-		INVALID,
-		FOUND,
-		NOT_FOUND,
-	};
-
-	static check_state s_state = INVALID;
-	if ( s_state == INVALID )
-	{
-		s_state = NOT_FOUND;
-
-		ICvar::Iterator iter( g_pCVar );
-		for ( iter.SetFirst() ; iter.IsValid() ; iter.Next() )
-		{
-			ConCommandBase *cmd = iter.Get();
-			if ( cmd )
-			{
-				if ( !Q_strncmp( cmd->GetName(), "prec_", 5 ) )
-				{
-					s_state = FOUND;
-					break;
-				}
-			}
-		}
-	}
-
-	if ( s_state == FOUND )
-	{
-		ShowMessageBox( "#TF_Incompatible_AddOn", "#TF_PREC_Loaded" );
-	}
-
-	return ( s_state == FOUND );
 }
 
 //-----------------------------------------------------------------------------
@@ -1593,10 +986,6 @@ void CHudMainMenuOverride::SetNotificationsPanelVisible( bool bVisible )
 			m_pNotificationsScroller->GetScrollbar()->InvalidateLayout();
 			m_pNotificationsScroller->GetScrollbar()->SetValue( 0 );
 
-			SetMOTDVisible( false );
-			SetQuestMapVisible( false );
-			//SetWatchStreamVisible( false );
-
 			m_pNotificationsShowPanel->SetVisible( false );
 
 			m_pNotificationsControl->OnTick();
@@ -1675,15 +1064,6 @@ void CHudMainMenuOverride::UpdatePromotionalCodes( void )
 			}
 		}
 
-		// The promo code button collides with the VR mode button. Turn off the promo code button
-		// in that case since the people who deliberately enabled VR are much more likely to want that
-		// than to claim their Well Spun Hat in Rift.
-		bool bShowVR = materials->GetCurrentConfigForVideoCard().m_nVRModeAdapter == materials->GetCurrentAdapter();
-		if( bShowVR )
-		{
-			bShouldBeVisible = false;
-		}
-
 		// has the player turned off this button?
 		if ( !cl_promotional_codes_button_show.GetBool() )
 		{
@@ -1693,11 +1073,6 @@ void CHudMainMenuOverride::UpdatePromotionalCodes( void )
 		if ( pPromoCodesButton->IsVisible() != bShouldBeVisible )
 		{
 			pPromoCodesButton->SetVisible( bShouldBeVisible );
-		}
-
-		if ( m_pVRModeBackground )
-		{
-			m_pVRModeBackground->SetVisible( bShouldBeVisible || bShowVR );
 		}
 	}
 }
@@ -1760,25 +1135,6 @@ void CHudMainMenuOverride::StopUpdateGlow()
 }
 
 //-----------------------------------------------------------------------------
-// Purpose: Show or hide the rank panels if the GC is connected
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::UpdateRankPanelVisibility()
-{
-	bool bConnectedToGC = GTFGCClientSystem()->BConnectedtoGC();
-
-	m_pRankPanel->SetVisible( bConnectedToGC );
-	m_pRankModelPanel->SetVisible( bConnectedToGC );
-	SetControlVisible( "CycleRankTypeButton", bConnectedToGC );
-	SetControlVisible( "NoGCMessage", !bConnectedToGC, true );
-	SetControlVisible( "NoGCImage", !bConnectedToGC, true );
-	UpdateRankPanelType();
-
-	SetControlVisible("NoGCMessage", false);
-	SetControlVisible("NoGCImage", false);
-	SetControlVisible("RankBorder", false);
-}
-
-//-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
 void CHudMainMenuOverride::OnCommand( const char *command )
@@ -1790,59 +1146,9 @@ void CHudMainMenuOverride::OnCommand( const char *command )
 		PlaySoundEntry( command + 11 );
 		return;
 	}
-	else if ( !Q_stricmp( command, "motd_viewurl" ) )
-	{
-		CMOTDEntryDefinition *pMOTD = GetMOTDManager().GetMOTDByIndex( m_iCurrentMOTD );
-		if ( pMOTD )
-		{
-			const char *pszURL = pMOTD->GetURL();
-			if ( pszURL && pszURL[0] )
-			{
-				if ( steamapicontext && steamapicontext->SteamFriends() )
-				{
-					steamapicontext->SteamFriends()->ActivateGameOverlayToWebPage( pszURL );
-				}
-			}
-		}
-		return;
-	}
-	else if ( !Q_stricmp( command, "view_newuser_forums" ) )
-	{
-		if ( steamapicontext && steamapicontext->SteamFriends() )
-		{
-			steamapicontext->SteamFriends()->ActivateGameOverlayToWebPage( "https://steamcommunity.com/app/440/discussions/" );
-		}
-		return;
-	}
 	else if ( !Q_stricmp( command, "opentf2options" ) )
 	{
 		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand( "engine opentf2options" );
-	}
-	else if ( !Q_stricmp( command, "motd_prev" ) )
-	{
-		if ( m_iCurrentMOTD > 0 )
-		{
-			m_iCurrentMOTD--;
-			UpdateMOTD( false );
-		}
-		return;
-	}
-	else if ( !Q_stricmp( command, "motd_next" ) )
-	{
-		if ( m_iCurrentMOTD < (GetMOTDManager().GetNumMOTDs()-1) )
-		{
-			m_iCurrentMOTD++;
-			UpdateMOTD( false );
-		}
-		return;
-	}
-	else if ( !Q_stricmp( command, "motd_show" ) )
-	{
-		SetMOTDVisible( !m_pMOTDPanel->IsVisible() );
-	}
-	else if ( !Q_stricmp( command, "motd_hide" ) )
-	{
-		SetMOTDVisible( false );
 	}
 	else if ( !Q_stricmp( command, "noti_show" ) )
 	{
@@ -1875,11 +1181,7 @@ void CHudMainMenuOverride::OnCommand( const char *command )
 		StartHighlightAnimation( MMHA_STORE );
 		StartHighlightAnimation( MMHA_LOADOUT );
 	}
-	else if ( !Q_stricmp( command, "offlinepractice" ) )
-	{
-		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand( "engine training_showdlg" );
-	}
-	else if ( !Q_stricmp( command, "armory_open" ) )
+	if ( !Q_stricmp( command, "armory_open" ) )
 	{
 		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand( "engine open_charinfo_armory" );
 	}
@@ -1890,15 +1192,6 @@ void CHudMainMenuOverride::OnCommand( const char *command )
 		if ( pDialog )
 		{
 			pDialog->Show();
-		}
-		return;
-	}
-	else if ( !Q_stricmp( command, "callvote" ) )
-	{
-		GetClientModeTFNormal()->GameUI()->SendMainMenuCommand( "engine callvote" );
-		if ( GetClientModeTFNormal()->GameUI() )
-		{
-			GetClientModeTFNormal()->GameUI()->SendMainMenuCommand(  "ResumeGame" );
 		}
 		return;
 	}
@@ -1924,19 +1217,6 @@ void CHudMainMenuOverride::OnCommand( const char *command )
 
 		pEditor->Exit_ShowDialogs();
 #endif // REPLAY_ENABLED
-	}
-	else if ( FStrEq( "questlog", command ) )
-	{
-		SetQuestMapVisible( !GetQuestMapPanel()->IsVisible() );
-	}
-	else if ( FStrEq( "watch_stream", command ) )
-	{
-		//SetWatchStreamVisible( !m_pWatchStreamsPanel->IsVisible() );
-		vgui::system()->ShellExecute( "open", "https://www.twitch.tv/directory/game/Team%20Fortress%202" );
-	}
-	else if ( FStrEq( "close_quest_map", command ) )
-	{
-		SetQuestMapVisible( false );
 	}
 	else if ( FStrEq( "view_update_page", command ) )
 	{
@@ -1993,63 +1273,6 @@ void CHudMainMenuOverride::OnCommand( const char *command )
 		}
 		m_hMutePlayerDialog->Activate();
 	}
-	else if ( FStrEq( "open_rank_type_menu", command ) )
-	{
-		if ( m_pRankTypeMenu )
-		{
-			m_pRankTypeMenu->MarkForDeletion();
-			m_pRankTypeMenu = NULL;
-		}
-
-		m_pRankTypeMenu = new Menu( this, "ranktypemenu" );
-
-		MenuBuilder builder( m_pRankTypeMenu, this );
-		const char *pszContextMenuBorder = "NotificationDefault";
-		const char *pszContextMenuFont = "HudFontMediumSecondary";
-		m_pRankTypeMenu->SetBorder( scheme()->GetIScheme( GetScheme() )->GetBorder( pszContextMenuBorder ) );
-		m_pRankTypeMenu->SetFont( scheme()->GetIScheme( GetScheme() )->GetFont( pszContextMenuFont, IsProportional() ) );
-
-		auto lambdaAddMatchTypeMenuOption = [ &builder ]( ETFMatchGroup eMatchGroup, bool bRequireRatingData = false )
-		{
-			auto pMatchGroup = GetMatchGroupDescription( eMatchGroup );
-			Assert( pMatchGroup );
-			if ( !pMatchGroup )
-				return;
-
-			if ( bRequireRatingData )
-			{
-				if ( !SteamUser() )
-					return;
-
-				EMMRating eRating = pMatchGroup->GetCurrentDisplayRank();
-				CTFRatingData* pRatingData = CTFRatingData::YieldingGetPlayerRatingDataBySteamID( SteamUser()->GetSteamID(), eRating );
-
-				if ( !pRatingData )
-					return;
-			}
-
-			wchar_t* pwszLocName = g_pVGuiLocalize->Find( pMatchGroup->GetNameLocToken() );
-			CFmtStr strCommand( "view_match_rank_%d", eMatchGroup );
-			builder.AddMenuItem( pwszLocName, strCommand.Get(), "type" );
-		};
-	
-		lambdaAddMatchTypeMenuOption( k_eTFMatchGroup_Casual_12v12 );
-		lambdaAddMatchTypeMenuOption( k_eTFMatchGroup_Ladder_6v6 );
-		lambdaAddMatchTypeMenuOption( k_eTFMatchGroup_Event_Placeholder, true );
-
-		// Position to the cursor's position
-		int nX, nY;
-		g_pVGuiInput->GetCursorPosition( nX, nY );
-		m_pRankTypeMenu->SetPos( nX - 1, nY - 1 );
-
-		m_pRankTypeMenu->SetVisible(true);
-		m_pRankTypeMenu->AddActionSignalTarget(this);
-	}
-	else if ( V_strnicmp( "view_match_rank_", command, 16 ) == 0 )
-	{
-		ETFMatchGroup eMatchGroup = (ETFMatchGroup)atoi( command + 16 );
-		tf_mainmenu_match_panel_type.SetValue( eMatchGroup );
-	}
 	else
 	{
 		// Pass it on to GameUI main menu
@@ -2075,130 +1298,6 @@ void CHudMainMenuOverride::OnKeyCodePressed( KeyCode code )
 	}
 }
 
-//-----------------------------------------------------------------------------
-// Purpose:
-//-----------------------------------------------------------------------------
-void CHudMainMenuOverride::CheckTrainingStatus( void )
-{
-	bool bNeedsTraining = tf_training_has_prompted_for_training.GetInt() <= 0;
-	bool bNeedsPractice = tf_training_has_prompted_for_offline_practice.GetInt() <= 0;
-	bool bShowForum = tf_training_has_prompted_for_forums.GetInt() <= 0;
-	bool bShowOptions = tf_training_has_prompted_for_options.GetInt() <= 0;
-	bool bWasInTraining = m_bWasInTraining;
-	bool bDashboardSidePanels = GetMMDashboard()->BAnySidePanelsShowing();
-	m_bWasInTraining = false;
-
-	bool bShowLoadout = false;
-	if ( tf_training_has_prompted_for_loadout.GetInt() <= 0 )
-	{
-		// See if we have any items in our inventory.
-		int iNumItems = TFInventoryManager()->GetLocalTFInventory()->GetItemCount();
-		if ( iNumItems > 0 )
-		{
-			bShowLoadout = true;
-		}
-	}
-
-	if ( !tf_find_a_match_hint_viewed.GetBool() )
-	{
-		tf_find_a_match_hint_viewed.SetValue( true );
-		ShowDashboardExplanation( "FindAMatch" );
-	}
-	else if ( !bDashboardSidePanels && bShowLoadout )
-	{
-		tf_training_has_prompted_for_loadout.SetValue( 1 );
-		StartHighlightAnimation( MMHA_LOADOUT );
-	}
-	else if ( bDashboardSidePanels && bNeedsTraining)
-	{
-		tf_training_has_prompted_for_training.SetValue( 1 );
-
-		auto pExplanation = StartHighlightAnimation( MMHA_TUTORIAL );
-		pExplanation->AddActionSignalTarget( this );
-
-		if ( pExplanation )
-		{
-			if ( UTIL_HasLoadedAnyMap() )
-			{
-				pExplanation->SetDialogVariable( "highlighttext", g_pVGuiLocalize->Find( "#MMenu_TutorialHighlight_Title2" ) );
-			}
-			else
-			{
-				pExplanation->SetDialogVariable( "highlighttext", g_pVGuiLocalize->Find( "#MMenu_TutorialHighlight_Title" ) );
-			}
-		}
-
-		
-	}
-	else if ( bDashboardSidePanels && bWasInTraining && Training_IsComplete() == false && tf_training_has_prompted_for_training.GetInt() < 2 )
-	{
-		tf_training_has_prompted_for_training.SetValue( 2 );
-
-		auto pExplanation = StartHighlightAnimation( MMHA_TUTORIAL );
-		if ( pExplanation )
-		{
-			pExplanation->SetDialogVariable( "highlighttext", g_pVGuiLocalize->Find( "#MMenu_TutorialHighlight_Title3" ) );
-		}
-	}
-	else if ( bDashboardSidePanels && bNeedsPractice )
-	{
-		tf_training_has_prompted_for_offline_practice.SetValue( 1 );
-		StartHighlightAnimation( MMHA_PRACTICE );
-	}
-	else if ( bShowForum )
-	{
-		tf_training_has_prompted_for_forums.SetValue( 1 );
-		StartHighlightAnimation( MMHA_NEWUSERFORUM );
-	}
-	else if ( bShowOptions )
-	{
-		tf_training_has_prompted_for_options.SetValue( 1 );
-		StartHighlightAnimation( MMHA_OPTIONS );
-	}
-}
-
-void CHudMainMenuOverride::UpdateRankPanelType()
-{
-	ETFMatchGroup eMatchGroup = (ETFMatchGroup)tf_mainmenu_match_panel_type.GetInt();
-
-	// Sanitize the matchgroup they want to see.
-	switch ( eMatchGroup )
-	{
-	case k_eTFMatchGroup_Casual_12v12:
-	case k_eTFMatchGroup_Event_Placeholder:
-	case k_eTFMatchGroup_Ladder_6v6:
-		break;
-
-	default:
-		eMatchGroup = k_eTFMatchGroup_Casual_12v12;
-	}
-
-	m_pRankPanel->SetMatchGroup( eMatchGroup );
-	m_pRankPanel->InvalidateLayout( true, true );
-	m_pRankModelPanel->SetMatchGroup( eMatchGroup );
-	m_pRankModelPanel->InvalidateLayout( true, true );
-
-	m_pRankPanel->OnCommand( "begin_xp_lerp" );
-	m_pRankModelPanel->OnCommand( "begin_xp_lerp" );
-
-	// Show the comp ranks tooltip mouseover panel? (the little '(i)' image)
-	bool bShowCompRankTooltip = false;
-	auto pMatchGroup = GetMatchGroupDescription( eMatchGroup );
-	if ( GetProgressionDesc( k_eProgression_Glicko ) == pMatchGroup->m_pProgressionDesc
-		 && GTFGCClientSystem()->BConnectedtoGC() )
-	{
-		bShowCompRankTooltip = true;
-	}
-
-	Panel* pRankTooltipPanel = FindChildByName( "RankTooltipPanel" );
-	if( pRankTooltipPanel )
-	{
-		pRankTooltipPanel->SetVisible( bShowCompRankTooltip );
-		pRankTooltipPanel->SetTooltip( GetCompRanksTooltip(), nullptr );
-	}
-}
-
-
 #define REMAP_COMMAND( oldCommand, newCommand ) \
 	const char *pszKey##oldCommand = engine->Key_LookupBindingExact(#oldCommand); \
 	const char *pszNewKey##oldCommand = engine->Key_LookupBindingExact(#newCommand); \
@@ -2218,121 +1317,6 @@ void CHudMainMenuOverride::PerformKeyRebindings( void )
 	REMAP_COMMAND( use_action_slot_item, +use_action_slot_item );
 	REMAP_COMMAND( use_action_slot_item_server, +use_action_slot_item_server );
 }
-
-//-----------------------------------------------------------------------------
-// Purpose: GC Msg handler to receive the MOTD request response
-//-----------------------------------------------------------------------------
-class CGCMOTDRequestResponse : public GCSDK::CGCClientJob
-{
-public:
-	CGCMOTDRequestResponse( GCSDK::CGCClient *pClient ) : GCSDK::CGCClientJob( pClient ) {}
-
-	virtual bool BYieldingRunGCJob( GCSDK::IMsgNetPacket *pNetPacket )
-	{
-		GCSDK::CGCMsg<MsgGCMOTDRequestResponse_t> msg( pNetPacket );
-
-		// No new entries?
-		if ( !msg.Body().m_nEntries )
-			return true;
-
-		// No main menu panel?
-		CHudMainMenuOverride *pMMPanel = (CHudMainMenuOverride*)gViewPortInterface->FindPanelByName( PANEL_MAINMENUOVERRIDE );
-		if ( !pMMPanel )
-			return true;
-
-		// Get our local language
-		char uilanguage[ 64 ];
-		uilanguage[0] = 0;
-		engine->GetUILanguage( uilanguage, sizeof( uilanguage ) );
-
-		//V_strcpy_safe( uilanguage, "german" );
-
-		KeyValues *pEntriesKV = new KeyValues( "motd_entries");
-
-		// Try and load the cache file. If we fail, we'll just create a new one.
-		if ( !pMMPanel->ReloadedAllMOTDs() )
-		{
-			pEntriesKV->LoadFromFile( g_pFullFileSystem, GC_MOTD_CACHE_FILE );
-		}
-
-		bool bNewMOTDs = false;
-
-		// Store the time & language we last checked.
-		char rtime_buf[k_RTimeRenderBufferSize];
-		pEntriesKV->SetString( "last_request_time", CRTime::RTime32ToString( pMMPanel->GetLastMOTDRequestTime(), rtime_buf ) );
-		pEntriesKV->SetString( "last_request_language", GetLanguageShortName( pMMPanel->GetLastMOTDRequestLanguage() ) );
-
-		// Read in the entries one by one, and insert them into our keyvalues structure.
-		for ( int i = 0; i < msg.Body().m_nEntries; i++ )
-		{
-			char pchMsgString[2048];
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-
-			// If there's already an entry with this index, overwrite the data
-			KeyValues *pNewEntry = pEntriesKV->FindKey( pchMsgString );
-			if ( !pNewEntry )
-			{
-				pNewEntry = new KeyValues( pchMsgString );
-				pEntriesKV->AddSubKey( pNewEntry );
-			}
-			pNewEntry->SetName( pchMsgString );
-
-			RTime32 iTime;
-			if ( !msg.BReadUintData( &iTime ) )
-				return false;
-			pNewEntry->SetString( "post_time", CRTime::RTime32ToString(iTime, rtime_buf) );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( VarArgs("title_%s", uilanguage), pchMsgString );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( VarArgs("text_%s", uilanguage), pchMsgString );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( "url", pchMsgString );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( "image", pchMsgString );
-
-			int iHeadertype;
-			if ( !msg.BReadIntData( &iHeadertype ) )
-				return false;
-			pNewEntry->SetString( "header_type", CFmtStr( "%d", iHeadertype ).Access() );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( VarArgs("header_%s", uilanguage), pchMsgString );
-
-			if ( !msg.BReadStr( pchMsgString, Q_ARRAYSIZE( pchMsgString ) ) )
-				return false;
-			pNewEntry->SetString( "header_icon", pchMsgString );
-
-			bNewMOTDs = true;
-		}
-
-		// Tell the schema to reload its MOTD block
-		CUtlVector< CUtlString > vecErrors;
-		pMMPanel->GetMOTDManager().BInitMOTDEntries( pEntriesKV, &vecErrors );
-		pMMPanel->GetMOTDManager().PurgeUnusedMOTDEntries( pEntriesKV );
-
-		// Save out our cache
-		pEntriesKV->SaveToFile( g_pFullFileSystem, GC_MOTD_CACHE_FILE );
-
-		// And tell the main menu to refresh the MOTD.
-		//pMMPanel->SetMOTDVisible( bNewMOTDs ); HACK!  Temporarily turn this off!
-		pMMPanel->UpdateMOTD( bNewMOTDs );
-		return true;
-	}
-};
-
-GC_REG_JOB( GCSDK::CGCClient, CGCMOTDRequestResponse, "CGCMOTDRequestResponse", k_EMsgGCMOTDRequestResponse, GCSDK::k_EServerTypeGCClient );
-
 
 //-----------------------------------------------------------------------------
 // Purpose:
