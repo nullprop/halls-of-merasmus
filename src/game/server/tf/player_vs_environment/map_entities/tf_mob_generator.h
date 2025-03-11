@@ -19,16 +19,16 @@ public:
 	virtual void Activate();
 
 	void GeneratorThink( void );
-	void SpawnBot( void );
+	void SpawnMob( void );
 
 	// Input.
 	void InputEnable( inputdata_t &inputdata );
 	void InputDisable( inputdata_t &inputdata );
-	void InputSpawnBot( inputdata_t &inputdata );
-	void InputRemoveBots( inputdata_t &inputdata );
+	void InputSpawnMob( inputdata_t &inputdata );
+	void InputRemoveMobs( inputdata_t &inputdata );
 
 	// Output
-	void OnBotKilled( NextBotCombatCharacter *pBot );
+	void OnMobKilled( NextBotCombatCharacter *pMob );
 
 private:
 	int m_spawnCount;
@@ -40,11 +40,11 @@ private:
 	bool m_bExpended;
 	bool m_bEnabled;
 
-	COutputEvent m_onBotSpawned;
-	COutputEvent m_onBotKilled;
+	COutputEvent m_onMobSpawned;
+	COutputEvent m_onMobKilled;
 	COutputEvent m_onExpended;
 
-	CUtlVector< CHandle< NextBotCombatCharacter > > m_spawnedBotVector;
+	CUtlVector< CHandle< NextBotCombatCharacter > > m_spawnedMobVector;
 };
 
 #endif // TF_MOB_GENERATOR_H

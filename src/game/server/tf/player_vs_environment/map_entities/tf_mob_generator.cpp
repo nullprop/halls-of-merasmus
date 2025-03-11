@@ -50,11 +50,11 @@ BEGIN_DATADESC( CTFMobGenerator )
 	DEFINE_INPUTFUNC( FIELD_VOID, "Enable", InputEnable ),
 	DEFINE_INPUTFUNC( FIELD_VOID, "Disable", InputDisable ),
 
-	DEFINE_INPUTFUNC( FIELD_VOID, "SpawnBot", InputSpawnBot ),
-	DEFINE_INPUTFUNC( FIELD_VOID, "RemoveBots", InputRemoveBots ),
+	DEFINE_INPUTFUNC( FIELD_VOID, "SpawnMob", InputSpawnMob ),
+	DEFINE_INPUTFUNC( FIELD_VOID, "RemoveMobs", InputRemoveMobs ),
 
-	DEFINE_OUTPUT( m_onBotSpawned, "OnBotSpawned" ),
-	DEFINE_OUTPUT( m_onBotKilled, "OnBotKilled" ),
+	DEFINE_OUTPUT( m_onMobSpawned, "OnMobSpawned" ),
+	DEFINE_OUTPUT( m_onMobKilled, "OnMobKilled" ),
 	DEFINE_OUTPUT( m_onExpended, "OnExpended" ),
 
 	DEFINE_THINKFUNC( GeneratorThink ),
@@ -108,33 +108,33 @@ void CTFMobGenerator::InputDisable( inputdata_t &inputdata )
 }
 
 //------------------------------------------------------------------------------
-void CTFMobGenerator::InputSpawnBot( inputdata_t &inputdata )
+void CTFMobGenerator::InputSpawnMob( inputdata_t &inputdata )
 {
 	if ( m_bEnabled )
 	{
-		SpawnBot();
+		SpawnMob();
 	}
 }
 
 //------------------------------------------------------------------------------
-void CTFMobGenerator::InputRemoveBots( inputdata_t &inputdata )
+void CTFMobGenerator::InputRemoveMobs( inputdata_t &inputdata )
 {
-	for( int i = m_spawnedBotVector.Count() - 1; i >= 0 ; i-- )
+	for( int i = m_spawnedMobVector.Count() - 1; i >= 0 ; i-- )
 	{
-		NextBotCombatCharacter *pBot = m_spawnedBotVector[i];
-		if ( pBot )
+		NextBotCombatCharacter *pMob = m_spawnedMobVector[i];
+		if ( pMob )
 		{
-			UTIL_Remove(pBot);
+			UTIL_Remove(pMob);
 		}
 
-		m_spawnedBotVector.FastRemove(i);
+		m_spawnedMobVector.FastRemove(i);
 	}
 }
 
 //------------------------------------------------------------------------------
-void CTFMobGenerator::OnBotKilled( NextBotCombatCharacter *pBot )
+void CTFMobGenerator::OnMobKilled( NextBotCombatCharacter *pMob )
 {
-	m_onBotKilled.FireOutput( pBot, this );
+	m_onMobKilled.FireOutput( pMob, this );
 }
 
 //------------------------------------------------------------------------------
@@ -158,25 +158,25 @@ void CTFMobGenerator::GeneratorThink( void )
 	// create the bot finally...
 	if ( !m_bSpawnOnlyWhenTriggered )
 	{
-		SpawnBot();
+		SpawnMob();
 	}
 }
 
 //------------------------------------------------------------------------------
-void CTFMobGenerator::SpawnBot( void )
+void CTFMobGenerator::SpawnMob( void )
 {
 	// Clear dead mobs
-	for ( int i = m_spawnedBotVector.Count() - 1; i >= 0; i-- )
+	for ( int i = m_spawnedMobVector.Count() - 1; i >= 0; i-- )
 	{
-		CHandle< NextBotCombatCharacter > hBot = m_spawnedBotVector[i];
-		if ( hBot == NULL )
+		CHandle< NextBotCombatCharacter > hMob = m_spawnedMobVector[i];
+		if ( hMob == NULL )
 		{
-			m_spawnedBotVector.FastRemove(i);
+			m_spawnedMobVector.FastRemove(i);
 		}
 	}
 
 	// Spawned too many?
-	if ( m_spawnedBotVector.Count() >= m_maxActiveCount )
+	if ( m_spawnedMobVector.Count() >= m_maxActiveCount )
 	{
 		SetNextThink( gpGlobals->curtime + 0.1f );
 		return;
@@ -220,9 +220,9 @@ void CTFMobGenerator::SpawnBot( void )
 
 	if ( pMob )
 	{
-		m_spawnedBotVector.AddToTail( pMob );
+		m_spawnedMobVector.AddToTail( pMob );
 
-		m_onBotSpawned.FireOutput( pMob, this );
+		m_onMobSpawned.FireOutput( pMob, this );
 
 		--m_spawnCountRemaining;
 		if ( m_spawnCountRemaining )
