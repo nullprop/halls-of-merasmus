@@ -282,8 +282,8 @@ bool CAI_Expresser::SpeakFindResponse( AI_Response &outResponse, AIConcept_t con
 	}
 
 	AI_CriteriaSet set;
-	// Always include the conc name
-	set.AppendCriteria( "conc", conc, CONCEPT_WEIGHT );
+	// Always include the concept name
+	set.AppendCriteria( "concept", conc, CONCEPT_WEIGHT );
 
 	// Always include any optional modifiers
 	if ( modifiers )

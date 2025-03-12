@@ -1155,7 +1155,7 @@ float CResponseSystem::ScoreCriteriaAgainstRuleCriteria( const AI_CriteriaSet& s
 
 	if ( verbose )
 	{
-		DevMsg( "  criterion '%25s':'%15s' ", m_Criteria.GetElementName( icriterion ), c->name );
+		DevMsg( "  criterion '%s':'%s':'%s' ", m_Criteria.GetElementName( icriterion ), c->name, c->value );
 	}
 
 	exclude = false;
@@ -3020,7 +3020,7 @@ IResponseSystem *CDefaultResponseSystem::BuildCustomResponseSystemGivenCriteria(
 	m_bCustomManagable = true;
 	AddInstancedResponseSystem( pszCustomName, pCustomSystem );
 
-//	pCustomSystem->DumpDictionary( pszCustomName );
+	pCustomSystem->DumpDictionary( pszCustomName );
 
 	return pCustomSystem;
 }
