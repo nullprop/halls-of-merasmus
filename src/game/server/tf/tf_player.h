@@ -17,6 +17,7 @@
 #include "steam/steam_gameserver.h"
 #include "ihasattributes.h"
 #include "tf_item_inventory.h"
+#include "player_vs_environment/hom_upgrades.h"
 
 class CTFPlayer;
 class CTFTeam;
@@ -993,18 +994,6 @@ public:
 	void				CalculateExperienceLevel( bool bAnnounce = true );
 	void				RefundExperiencePoints( void );
 
-	void				RememberUpgrade( int iPlayerClass, CEconItemView *pItem, int iUpgrade, int nCost, bool bDowngrade = false );	// store this upgrade for restoring at a checkpoint
-	void				ForgetFirstUpgradeForItem( CEconItemView *pItem );						// erase the first upgrade stored for this item (for powerup bottles)
-	void				ClearUpgradeHistory( void );
-	void				ReapplyItemUpgrades ( CEconItemView *pItem );
-	void				ReapplyPlayerUpgrades ( void );
-	void				SetWaveSpawnPopulator( CWaveSpawnPopulator *pWave ){ m_pWaveSpawnPopulator = pWave; }
-	CUtlVector< CUpgradeInfo >* GetRefundableUpgrades( void ) { return &m_RefundableUpgrades; }
-	void				ResetRefundableUpgrades( void ) { m_RefundableUpgrades.RemoveAll(); }
-	void				BeginPurchasableUpgrades( void );
-	void				EndPurchasableUpgrades( void );
-	bool				CanPurchaseUpgrades( void ) const { Assert( m_nCanPurchaseUpgradesCount >= 0 ); return m_nCanPurchaseUpgradesCount > 0; }
-
 	void				PlayReadySound( void );
 
 	void				AccumulateSentryGunDamageDealt( float damage );
@@ -1267,14 +1256,11 @@ private:
 	CWaveSpawnPopulator *m_pWaveSpawnPopulator;
 	float				m_flLastReadySoundTime;
 
-	int						m_nCanPurchaseUpgradesCount;
-	CUtlVector< CUpgradeInfo >	m_RefundableUpgrades;
-
-	CUtlVector< CUpgradeInfo > * GetPlayerUpgradeHistory( void );
-	CUtlVector< CUpgradeInfo >  m_LocalUpgradeHistory;
-
 public:
-	void GrantOrRemoveAllUpgrades( bool bRemove, bool bRefund );
+	void RemoveAllUpgrades();
+
+	int m_upgrades[HomUpgrade_t::UPGRADE_COUNT];
+	int m_iUpgradeCount;
 
 	// Marking for death.
 	CHandle<CTFPlayer>	m_pMarkedForDeathTarget;

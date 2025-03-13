@@ -129,6 +129,7 @@
 	#include "player_vs_environment/tf_melee_mob.h"
 	#include "player_vs_environment/tf_flying_mob.h"
 	#include "player_vs_environment/tf_mob_drop.h"
+	#include "player_vs_environment/hom_upgrades.h"
 #endif
 
 #include "tf_mann_vs_machine_stats.h"
@@ -6959,6 +6960,9 @@ float CTFGameRules::ApplyOnDamageAliveModifyRules( const CTakeDamageInfo &info, 
 	CTFPlayer *pTFAttacker = ToTFPlayer( pAttacker );
 
 	float flRealDamage = info.GetDamage();
+
+	// HOM upgrade stuff
+	flRealDamage = CHomUpgradeHandler::OnTakeDamage_Alive( flRealDamage, info, pVictimBaseEntity );
 
 	int iAttackIgnoresResists = 0;
 	CALL_ATTRIB_HOOK_INT_ON_OTHER( info.GetWeapon(), iAttackIgnoresResists, mod_pierce_resists_absorbs );
@@ -14905,19 +14909,19 @@ void CTFGameRules::ClientCommandKeyValues( edict_t *pEntity, KeyValues *pKeyValu
 				}
 			}
 		}
+		/*
 		else if ( FStrEq( pszCommand, "MvM_UpgradesBegin" ) )
 		{
 			pTFPlayer->BeginPurchasableUpgrades();
 		}
 		else if ( FStrEq( pszCommand, "MvM_UpgradesDone" ) )
 		{
-			pTFPlayer->EndPurchasableUpgrades();
-
 			if ( IsMannVsMachineMode() && pKeyValues->GetInt( "num_upgrades", 0 ) > 0 )
 			{
 				pTFPlayer->SpeakConceptIfAllowed( MP_CONCEPT_MVM_UPGRADE_COMPLETE );
 			}
 		}
+		*/
 		else if ( FStrEq( pszCommand, "MVM_Revive_Response" ) )
 		{
 			CTFReviveMarker *pReviveMarker = pTFPlayer->GetReviveMarker();
@@ -14958,7 +14962,7 @@ void CTFGameRules::ClientCommandKeyValues( edict_t *pEntity, KeyValues *pKeyValu
 					g_pPopulationManager->RemovePlayerAndItemUpgradesFromHistory( pTFPlayer );
 
 					// Remove upgrade attributes from the player and their items
-					g_hUpgradeEntity->GrantOrRemoveAllUpgrades( pTFPlayer, true );
+					g_hUpgradeEntity->RemoveAllUpgrades( pTFPlayer );
 
 					pTFPlayer->ForceRespawn();
 				}

@@ -147,15 +147,10 @@ void CUpgrades::EndTouch( CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CUpgrades::GrantOrRemoveAllUpgrades( CTFPlayer *pTFPlayer, bool bRemove /*= false*/, bool bRefund /*= true*/ )
+void CUpgrades::RemoveAllUpgrades( CTFPlayer *pTFPlayer )
 {
-	// If we're being asked to remove and refund everything, it's a respec (the population manager actually handles refunding later)
-	bool bRespec = bRemove && bRefund;
-
-	if ( pTFPlayer && ( ( sv_cheats && sv_cheats->GetBool() ) || bRemove ) )
+	if ( pTFPlayer )
 	{
-		pTFPlayer->BeginPurchasableUpgrades();
-
 		// for each upgrade
 		for ( int iUpgrade = 0 ; iUpgrade < g_MannVsMachineUpgrades.m_Upgrades.Count() ; iUpgrade++ )
 		{
@@ -168,20 +163,12 @@ void CUpgrades::GrantOrRemoveAllUpgrades( CTFPlayer *pTFPlayer, bool bRemove /*=
 
 			if ( pAttribDef )
 			{
-				loadout_positions_t nLastLoadoutPos = bRespec ? LOADOUT_POSITION_MISC2 : LOADOUT_POSITION_HEAD;
 				// for each item
-				for ( int iItemSlot = LOADOUT_POSITION_PRIMARY ; iItemSlot < nLastLoadoutPos ; iItemSlot++ )	
+				for ( int iItemSlot = LOADOUT_POSITION_PRIMARY ; iItemSlot < LOADOUT_POSITION_HEAD ; iItemSlot++ )	
 				{
-					// Don't respec bottle charges
-					if ( bRespec && iItemSlot == LOADOUT_POSITION_ACTION )
-						continue;
-
 					// can this item use this upgrade?
-					if ( bRespec || ( TFGameRules() && TFGameRules()->CanUpgradeWithAttrib( pTFPlayer, iItemSlot, pAttribDef->GetDefinitionIndex(), &upgrade ) ) )
-					{
-						// If we're not removing, assume we're giving the player everything for free (cheat)
-						bool bFree = ( !bRemove || !bRefund ) ? true : false;
-						
+					if ( ( TFGameRules() && TFGameRules()->CanUpgradeWithAttrib( pTFPlayer, iItemSlot, pAttribDef->GetDefinitionIndex(), &upgrade ) ) )
+					{						
 						// compute number of upgrade steps this upgrade has
 						bool bOverCap = false;
 						int iCurrentUpgradeStep = 0;
@@ -190,13 +177,12 @@ void CUpgrades::GrantOrRemoveAllUpgrades( CTFPlayer *pTFPlayer, bool bRemove /*=
 						// for each upgrade step
 						for ( int iStep = 0; iStep < iNumMaxUpgradeStep; ++iStep )
 						{
-							PlayerPurchasingUpgrade( pTFPlayer, iItemSlot, iUpgrade, bRemove, bFree, bRespec );
+							PlayerPurchasingUpgrade( pTFPlayer, iItemSlot, iUpgrade, true, false );
 						}
 					}
 				}
 			}
 		}
-		pTFPlayer->EndPurchasableUpgrades();
 	}
 }
 
@@ -204,7 +190,7 @@ void CUpgrades::GrantOrRemoveAllUpgrades( CTFPlayer *pTFPlayer, bool bRemove /*=
 // Purpose: Handles a player upgrade purchase request.
 //   Returns false if upgrade request is invalid.
 //-----------------------------------------------------------------------------
-bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, int iUpgrade, bool bDowngrade, bool bFree /*= false */, bool bRespec /*= false*/ )
+bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, int iUpgrade, bool bDowngrade, bool bFree /*= false */ )
 {
 	if ( !pTFPlayer ||
 		 iUpgrade < 0 ||
@@ -216,7 +202,7 @@ bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, in
 	// Verify that this upgrade can be accepted on this player
 	CMannVsMachineUpgrades upgrade = g_MannVsMachineUpgrades.m_Upgrades[ iUpgrade ];
 	CEconItemAttributeDefinition *pAttribDef = ItemSystem()->GetStaticDataForAttributeByName( upgrade.szAttrib );
-	if ( !bRespec && ( !TFGameRules() || !TFGameRules()->CanUpgradeWithAttrib( pTFPlayer, iItemSlot, pAttribDef->GetDefinitionIndex(), &upgrade ) ) )
+	if ( ( !TFGameRules() || !TFGameRules()->CanUpgradeWithAttrib( pTFPlayer, iItemSlot, pAttribDef->GetDefinitionIndex(), &upgrade ) ) )
 	{
 		return false;
 	}
@@ -225,20 +211,7 @@ bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, in
 
 	if ( bDowngrade )
 	{
-		// See if we know the actual price paid, rather than asking what the current price is, which is exploitable
-		CUtlVector< CUpgradeInfo > *pUpgrades = pTFPlayer->GetRefundableUpgrades();
-		if ( pUpgrades && pUpgrades->Count() )
-		{
-			FOR_EACH_VEC( *pUpgrades, i )
-			{
-				CUpgradeInfo *pInfo = &pUpgrades->Element( i );
-				if ( pInfo && pInfo->m_upgrade == iUpgrade )
-				{
-					nCost = pInfo->m_nCost;
-					break;
-				}
-			}
-		}
+
 	}
 	if ( !nCost )
 	{
@@ -269,36 +242,16 @@ bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, in
 
 	if ( bDowngrade )
 	{
-		if ( bRespec )
+		bool bCanSell = false;
+
+		// Before we sell anything, make sure it's verified as valid
+		item_definition_index_t iItemIndex = pItem ? pItem->GetItemDefIndex() : INVALID_ITEM_DEF_INDEX;
+
+		if ( !bCanSell )
 		{
-			// Approve everything and don't refund currency here.  The population manager handles that later.
-			nCost = 0;
-		}
-		else
-		{
-			bool bCanSell = false;
-
-			// Before we sell anything, make sure it's verified as valid
-			item_definition_index_t iItemIndex = pItem ? pItem->GetItemDefIndex() : INVALID_ITEM_DEF_INDEX;
-
-			for ( int i = 0; i < pTFPlayer->GetRefundableUpgrades()->Count(); ++i )
-			{
-				CUpgradeInfo pInfo = pTFPlayer->GetRefundableUpgrades()->Element( i );
-				if ( ( pInfo.m_iPlayerClass == pTFPlayer->GetPlayerClass()->GetClassIndex() ) && ( pInfo.m_itemDefIndex == iItemIndex ) && ( pInfo.m_upgrade == iUpgrade ) )
-				{
-					// Found a matching upgrade that we can sell
-					nCost = ( pInfo.m_nCost * -1 );
-					bCanSell = true;
-					break;
-				}
-			}
-
-			if ( !bCanSell )
-			{
-				// No matched recent purchases!
-				// No sale!
-				return false;
-			}
+			// No matched recent purchases!
+			// No sale!
+			return false;
 		}
 	}
 	else
@@ -321,11 +274,8 @@ bool CUpgrades::PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, in
 		pTFPlayer->RemoveCurrency( nCost );
 	}
 
-	// remember our upgrades so we can restore them at a checkpoint
-	pTFPlayer->RememberUpgrade( pTFPlayer->GetPlayerClass()->GetClassIndex(), pItem, iUpgrade, nCost, bDowngrade );
-
 	// Only regenerate if between waves
-	pTFPlayer->Regenerate( TFObjectiveResource()->GetMannVsMachineIsBetweenWaves() );
+	pTFPlayer->Regenerate( true );
 
 	// If we're upgrading an item, figure out if it's a weapon and then notify it (gives it a chance to re-hook attributes)
 	if ( pItem )
@@ -570,7 +520,7 @@ attrib_definition_index_t CUpgrades::ApplyUpgradeToItem( CTFPlayer *pTFPlayer, C
 	Assert( pTFPlayer );
 	Assert( g_MannVsMachineUpgrades.m_Upgrades.IsValidIndex( iUpgrade ) );
 
-	if ( !pTFPlayer || !pTFPlayer->CanPurchaseUpgrades() )
+	if ( true )
 		return INVALID_ATTRIB_DEF_INDEX;
 
 	const CMannVsMachineUpgrades& upgrade = g_MannVsMachineUpgrades.m_Upgrades[iUpgrade];

@@ -848,18 +848,6 @@ void CPopulationManager::ResetMap( void )
 	ResetRespecPoints();
 	ClearCheckpoint();
 
-	for ( int i = 1; i <= MAX_PLAYERS; ++i )
-	{
-		CTFPlayer *pTFPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
-		if ( !pTFPlayer )
-			continue;
-
-		if ( pTFPlayer->IsBot() )
-			continue;
-
-		pTFPlayer->ResetRefundableUpgrades();
-	}
-
 	JumpToWave( 0, 0 );
 }
 
@@ -1324,8 +1312,6 @@ void CPopulationManager::RestoreItemToCheckpointState( CTFPlayer *player, CEconI
 	if ( !item || !item->IsValid() )
 		return;
 
-	player->BeginPurchasableUpgrades();
-
 	// restore the item's upgrade(s)
 	for( int u=0; u<snapshot->m_upgradeVector.Count(); ++u )
 	{
@@ -1348,8 +1334,6 @@ void CPopulationManager::RestoreItemToCheckpointState( CTFPlayer *player, CEconI
 			}
 		}
 	}
-
-	player->EndPurchasableUpgrades();
 }
 
 //-------------------------------------------------------------------------
@@ -1518,17 +1502,6 @@ void CPopulationManager::ClearCheckpoint( void )
 	m_nNumConsecutiveWipes = 0;
 	m_checkpointWaveIndex = 0;
 	m_checkpointSnapshot.PurgeAndDeleteElements();
-
-	CUtlVector< CTFPlayer * > playerVector;
-	CollectPlayers( &playerVector, TF_TEAM_PVE_DEFENDERS );
-
-	for( int i=0; i<playerVector.Count(); ++i )
-	{
-		CTFPlayer *player = playerVector[i];
-
-		player->ClearUpgradeHistory();
-	}
-
 }
 
 //-------------------------------------------------------------------------

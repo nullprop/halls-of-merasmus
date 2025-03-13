@@ -898,6 +898,8 @@ $Project "Server (TF)"
 			{
 				$File	"tf\player_vs_environment\archer_proxy.cpp"
 				$File	"tf\player_vs_environment\archer_proxy.h"
+				$File	"tf\player_vs_environment\hom_upgrades.cpp"
+				$File	"tf\player_vs_environment\hom_upgrades.h"
 				$File	"tf\player_vs_environment\monster_resource.cpp"
 				$File	"tf\player_vs_environment\monster_resource.h"
 				$File	"$SRCDIR\game\shared\tf\tf_mann_vs_machine_stats.cpp"

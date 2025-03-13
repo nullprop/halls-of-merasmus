@@ -4,6 +4,7 @@
 //
 //=============================================================================
 #include "cbase.h"
+#include "hom_upgrades.h"
 #include "tf_mob_drop.h"
 #include "tf_player.h"
 #include "tf_gamerules.h"
@@ -160,7 +161,7 @@ void CTFFlyingMob::Spawn( void )
 //-----------------------------------------------------------------------------------------------------
 int CTFFlyingMob::OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo )
 {
-	if ( !rawInfo.GetAttacker() || rawInfo.GetAttacker()->GetTeamNumber() == GetTeamNumber() )
+	if ( !rawInfo.GetInflictor() || rawInfo.GetInflictor()->GetTeamNumber() == GetTeamNumber() )
 		return 0;
 
 	DispatchParticleEffect( "spell_skeleton_goop_green", rawInfo.GetDamagePosition(), GetAbsAngles() );
@@ -321,6 +322,9 @@ void CTFFlyingMob::Event_Killed( const CTakeDamageInfo &info )
 	FireDeathOutput( info.GetInflictor() );
 	
 	BaseClass::Event_Killed( info );
+
+	// Do this after base so we don't loop in case of death explosions, etc.
+	CHomUpgradeHandler::OnMobKilled( this, info );
 }
 //-----------------------------------------------------------------------------------------------------
 void CTFFlyingMob::FireDeathOutput( CBaseEntity *pCulprit )

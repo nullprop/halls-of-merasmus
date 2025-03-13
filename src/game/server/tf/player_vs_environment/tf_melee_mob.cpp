@@ -4,6 +4,7 @@
 //
 //=============================================================================
 #include "cbase.h"
+#include "hom_upgrades.h"
 #include "tf_mob_drop.h"
 #include "tf_player.h"
 #include "tf_gamerules.h"
@@ -173,7 +174,7 @@ void CTFMeleeMob::Spawn( void )
 //-----------------------------------------------------------------------------------------------------
 int CTFMeleeMob::OnTakeDamage_Alive( const CTakeDamageInfo &rawInfo )
 {
-	if ( !rawInfo.GetAttacker() || rawInfo.GetAttacker()->GetTeamNumber() == GetTeamNumber() )
+	if ( !rawInfo.GetInflictor() || rawInfo.GetInflictor()->GetTeamNumber() == GetTeamNumber() )
 		return 0;
 
 	if ( !IsPlayingGesture( ACT_MP_GESTURE_FLINCH_CHEST ) )
@@ -345,6 +346,9 @@ void CTFMeleeMob::Event_Killed( const CTakeDamageInfo &info )
 	FireDeathOutput( info.GetInflictor() );
 	
 	BaseClass::Event_Killed( info );
+
+	// Do this after base so we don't loop in case of death explosions, etc.
+	CHomUpgradeHandler::OnMobKilled( this, info );
 }
 
 

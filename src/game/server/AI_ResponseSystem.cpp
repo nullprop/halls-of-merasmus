@@ -3020,7 +3020,7 @@ IResponseSystem *CDefaultResponseSystem::BuildCustomResponseSystemGivenCriteria(
 	m_bCustomManagable = true;
 	AddInstancedResponseSystem( pszCustomName, pCustomSystem );
 
-	pCustomSystem->DumpDictionary( pszCustomName );
+	//pCustomSystem->DumpDictionary( pszCustomName );
 
 	return pCustomSystem;
 }

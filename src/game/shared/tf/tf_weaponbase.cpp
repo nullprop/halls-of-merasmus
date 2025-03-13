@@ -830,11 +830,6 @@ void CTFWeaponBase::Equip( CBaseCombatCharacter *pOwner )
 
 #ifdef GAME_DLL
 		UpdateExtraWearables();
-		CTFPlayer *pTFPlayer = ToTFPlayer( pOwner );
-		if ( pTFPlayer )
-		{
-			pTFPlayer->ReapplyItemUpgrades(pItem);
-		}
 #endif // GAME_DLL
 	}
 }

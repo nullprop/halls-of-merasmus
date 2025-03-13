@@ -1629,7 +1629,6 @@ void CWaveSpawnPopulator::Update( void )
 					if ( bot )
 					{
 						bot->SetCustomCurrencyWorth( 0 );
-						bot->SetWaveSpawnPopulator( this );
 
 						// Allows client UI to know if a specific spawner is active
 						TFObjectiveResource()->SetMannVsMachineWaveClassActive( bot->GetPlayerClass()->GetClassIconName() );

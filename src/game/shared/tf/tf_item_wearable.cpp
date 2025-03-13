@@ -701,15 +701,6 @@ void CTFWearable::Equip( CBasePlayer* pOwner )
 #ifdef CLIENT_DLL
 	pTFPlayer->SetBodygroupsDirty();
 #endif
-
-#ifdef GAME_DLL
-	// Reapply upgrades for wearables upon equip
-	CEconItemView *pItem = ( (CTFWearable *)this )->GetAttributeContainer()->GetItem();
-	if ( pTFPlayer && pItem->IsValid() )
-	{
-		pTFPlayer->ReapplyItemUpgrades( pItem );	
-	}
-#endif // GAME_DLL
 }
 
 //-----------------------------------------------------------------------------

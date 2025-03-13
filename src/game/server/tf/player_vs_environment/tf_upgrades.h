@@ -40,8 +40,8 @@ public:
 	void			InputDisable( inputdata_t &inputdata );
 	void			InputReset( inputdata_t &inputdata );
 
-	void			GrantOrRemoveAllUpgrades( CTFPlayer *pTFPlayer, bool bRemove = false, bool bRefund = true );
-	bool			PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, int iUpgrade, bool bDowngrade, bool bFree = false, bool bRespec = false );
+	void			RemoveAllUpgrades( CTFPlayer *pTFPlayer );
+	bool			PlayerPurchasingUpgrade( CTFPlayer *pTFPlayer, int iItemSlot, int iUpgrade, bool bDowngrade, bool bFree = false );
 
 	attrib_definition_index_t ApplyUpgradeToItem( CTFPlayer *pTFPlayer, CEconItemView *pView, int iUpgrade, int nCost, bool bDowngrade = false, bool bIsFresh = false );		// needed for checkpoint restore
 
